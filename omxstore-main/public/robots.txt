@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# App-gated or non-indexable areas — no value in crawling.
+Disallow: /admin
+Disallow: /account
+Disallow: /orders
+Disallow: /checkout
+Disallow: /search

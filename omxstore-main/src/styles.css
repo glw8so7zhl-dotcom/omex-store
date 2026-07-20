@@ -1,0 +1,355 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* =====================================================================
+   OMEX Store — Premium Design System
+   Dark "deep-space" identity, OKLCH palette, glassmorphism.
+   Phase 1 elevation: richer depth tokens, accessible focus, refined
+   type rhythm, reduced-motion support. Additive only — every token and
+   @utility relied on by the app is preserved.
+   ===================================================================== */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 6px);
+  --radius-2xl: calc(var(--radius) + 12px);
+  --radius-3xl: calc(var(--radius) + 20px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-glow: var(--primary-glow);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-sale: var(--sale);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+
+  --font-sans: "Tajawal", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Cairo", "Tajawal", ui-sans-serif, sans-serif;
+
+  --ease-premium: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root {
+  --radius: 1.25rem; /* 20px */
+
+  /* Deep space palette */
+  --background: oklch(0.13 0.04 270);
+  --foreground: oklch(0.98 0.005 250);
+
+  --surface: oklch(0.18 0.045 270);
+  --surface-2: oklch(0.22 0.05 270);
+  --surface-3: oklch(0.26 0.055 270);
+
+  --card: oklch(0.19 0.045 270);
+  --card-foreground: oklch(0.98 0.005 250);
+
+  --popover: oklch(0.19 0.045 270);
+  --popover-foreground: oklch(0.98 0.005 250);
+
+  --primary: oklch(0.58 0.22 260); /* #2563EB */
+  --primary-foreground: oklch(0.99 0.005 250);
+  --primary-glow: oklch(0.68 0.2 258); /* #3B82F6 */
+
+  --secondary: oklch(0.26 0.05 270);
+  --secondary-foreground: oklch(0.98 0.005 250);
+
+  --muted: oklch(0.24 0.04 270);
+  --muted-foreground: oklch(0.76 0.025 260); /* raised for AA contrast on dark */
+
+  --accent: oklch(0.68 0.2 258);
+  --accent-foreground: oklch(0.13 0.04 270);
+
+  --destructive: oklch(0.62 0.24 27);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --success: oklch(0.72 0.19 145); /* #22C55E */
+  --sale: oklch(0.65 0.24 25); /* #EF4444 */
+
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.68 0.2 258);
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(
+    135deg,
+    oklch(0.55 0.22 262),
+    oklch(0.63 0.21 260) 48%,
+    oklch(0.66 0.2 278)
+  );
+  --gradient-hero: radial-gradient(ellipse at top, oklch(0.28 0.15 265 / 0.6), transparent 60%),
+    radial-gradient(ellipse at bottom right, oklch(0.4 0.2 300 / 0.35), transparent 55%),
+    linear-gradient(180deg, oklch(0.13 0.04 270), oklch(0.09 0.03 270));
+  --gradient-sale: linear-gradient(135deg, oklch(0.65 0.24 25), oklch(0.72 0.22 40));
+  --gradient-sheen: linear-gradient(
+    105deg,
+    transparent 20%,
+    oklch(1 0 0 / 0.08) 45%,
+    oklch(1 0 0 / 0.14) 50%,
+    oklch(1 0 0 / 0.08) 55%,
+    transparent 80%
+  );
+
+  /* Layered, premium shadows — soft + diffuse for an expensive feel */
+  --shadow-glow: inset 0 1px 0 0 oklch(1 0 0 / 0.08), 0 30px 90px -26px oklch(0.58 0.22 260 / 0.55);
+  --shadow-glow-sm: 0 12px 34px -12px oklch(0.58 0.22 260 / 0.5);
+  --shadow-card: inset 0 1px 0 0 oklch(1 0 0 / 0.06), 0 18px 54px -26px oklch(0 0 0 / 0.62),
+    0 4px 12px -6px oklch(0 0 0 / 0.35);
+  --shadow-elevated: inset 0 1px 0 0 oklch(1 0 0 / 0.08), 0 44px 100px -34px oklch(0 0 0 / 0.7),
+    0 14px 34px -18px oklch(0 0 0 / 0.45);
+}
+
+/* Force dark styling regardless of .dark class */
+.dark {
+  --background: oklch(0.13 0.04 270);
+  --foreground: oklch(0.98 0.005 250);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html,
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  html {
+    direction: rtl;
+    scroll-behavior: smooth;
+    scroll-padding-top: 5.5rem; /* sticky header offset for in-page anchors */
+    -webkit-tap-highlight-color: transparent;
+    overflow-x: clip; /* guard against accidental horizontal scroll */
+  }
+  body {
+    /* subtle depth wash behind the app shell */
+    background-image: radial-gradient(
+        ellipse 80% 60% at 50% -10%,
+        oklch(0.3 0.14 265 / 0.18),
+        transparent 60%
+      ),
+      radial-gradient(ellipse 60% 50% at 100% 0%, oklch(0.4 0.18 300 / 0.1), transparent 55%);
+    background-attachment: fixed;
+  }
+
+  /* Premium type rhythm. NOTE: no letter-spacing on Arabic (cursive/joined). */
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+    line-height: 1.15;
+  }
+  p {
+    text-wrap: pretty;
+  }
+
+  /* Accessible focus — additive outline on top of component ring styles. */
+  :focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--ring) 85%, transparent);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 55%, transparent);
+    color: white;
+  }
+
+  /* Custom scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--primary) 45%, transparent) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--primary) 38%, transparent);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklab, var(--primary) 60%, transparent);
+    background-clip: padding-box;
+  }
+
+  /* Respect reduced-motion for all CSS-driven animation/transition. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Glass surfaces (box-shadow intentionally omitted so `shadow-*`
+   utilities compose cleanly on the same element).
+   --------------------------------------------------------------------- */
+@utility glass {
+  background:
+    linear-gradient(180deg, color-mix(in oklab, white 7%, transparent), transparent 42%),
+    color-mix(in oklab, var(--surface) 72%, transparent);
+  backdrop-filter: blur(22px) saturate(165%);
+  -webkit-backdrop-filter: blur(22px) saturate(165%);
+  border: 1px solid color-mix(in oklab, white 10%, transparent);
+}
+
+@utility glass-strong {
+  background:
+    linear-gradient(180deg, color-mix(in oklab, white 9%, transparent), transparent 46%),
+    color-mix(in oklab, var(--surface-2) 86%, transparent);
+  backdrop-filter: blur(28px) saturate(185%);
+  -webkit-backdrop-filter: blur(28px) saturate(185%);
+  border: 1px solid color-mix(in oklab, white 12%, transparent);
+}
+
+@utility gradient-primary {
+  background-image: var(--gradient-primary);
+}
+
+@utility gradient-hero {
+  background-image: var(--gradient-hero);
+}
+
+@utility gradient-sale {
+  background-image: var(--gradient-sale);
+}
+
+@utility shadow-glow {
+  box-shadow: var(--shadow-glow);
+}
+
+@utility shadow-glow-sm {
+  box-shadow: var(--shadow-glow-sm);
+}
+
+@utility shadow-card {
+  box-shadow: var(--shadow-card);
+}
+
+@utility shadow-elevated {
+  box-shadow: var(--shadow-elevated);
+}
+
+@utility text-gradient {
+  background-image: var(--gradient-primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility text-balance {
+  text-wrap: balance;
+}
+
+/* Animations */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+@keyframes float-slow {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(20px, -30px) scale(1.05);
+  }
+}
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+@keyframes rise-in {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes sheen {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+@utility animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+@utility animate-float-slow {
+  animation: float-slow 12s ease-in-out infinite;
+}
+@utility animate-pulse-glow {
+  animation: pulse-glow 4s ease-in-out infinite;
+}
+@utility animate-rise-in {
+  animation: rise-in 0.6s var(--ease-premium) both;
+}

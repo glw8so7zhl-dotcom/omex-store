@@ -25,6 +25,7 @@ import { ProductAlertButton } from "@/components/site/ProductAlertButton";
 import { ShareButtons } from "@/components/site/ShareButtons";
 import { StickyBuyBar } from "@/components/site/StickyBuyBar";
 import { ProductReviews } from "@/components/site/ProductReviews";
+import { ProductQuestions } from "@/components/site/ProductQuestions";
 import { Footer } from "@/components/site/Footer";
 import { QtyStepper } from "@/components/site/QtyStepper";
 import { Container } from "@/components/site/Container";
@@ -323,6 +324,8 @@ function ProductPage() {
         </div>
 
         <ProductReviews productDbId={product.dbId} />
+
+        <ProductQuestions productDbId={product.dbId} />
 
         {related.length > 0 && (
           <section className="mt-16">

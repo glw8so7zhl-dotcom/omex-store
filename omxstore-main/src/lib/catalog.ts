@@ -9,10 +9,12 @@ import type { Product, Category } from "@/lib/products";
  * checkout, cards) is unchanged. `Product.id` is the DB `slug`, keeping
  * product URLs and existing localStorage carts valid.
  *
- * Only scalar-column selects are used (no embedded-resource select strings)
- * to stay fully type-safe under strict TS. Category slug is resolved via a
- * small id→slug map. Used from SSR route loaders (isomorphic supabase anon
- * reads) so catalog pages render on the server for SEO.
+ * RESILIENCE: these run inside SSR route loaders. If Supabase is
+ * misconfigured (e.g. a bad/missing SUPABASE_URL env var) or unavailable, the
+ * client can throw on construction ("Invalid supabaseUrl") or the query can
+ * fail. We MUST NOT let that crash server rendering into an HTTP 500 — every
+ * helper catches and returns a safe empty fallback so the page still renders
+ * (empty state). Fix the env to populate the catalog; never hard-fail the app.
  */
 
 const PRODUCT_COLUMNS =
@@ -35,6 +37,16 @@ type ProductRow = {
   flash_sale: boolean | null;
   category_id: string | null;
 };
+
+/** Run a Supabase read safely — never throw out of an SSR loader. */
+async function safe<T>(label: string, run: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await run();
+  } catch (err) {
+    console.error(`[catalog] ${label} failed; serving empty fallback:`, err);
+    return fallback;
+  }
+}
 
 async function fetchCategoryMap(): Promise<Map<string, string>> {
   const { data, error } = await supabase.from("categories").select("id,slug");
@@ -77,54 +89,74 @@ function mapProduct(row: ProductRow, categorySlugById: Map<string, string>): Pro
   };
 }
 
-/** All active products, best-sellers first. */
+/** All active products, best-sellers first. Empty on any failure. */
 export async function fetchProducts(): Promise<Product[]> {
-  const [res, categorySlugById] = await Promise.all([
-    supabase
-      .from("products")
-      .select(PRODUCT_COLUMNS)
-      .eq("is_active", true)
-      .order("sales_count", { ascending: false }),
-    fetchCategoryMap(),
-  ]);
-  if (res.error) throw res.error;
-  return ((res.data ?? []) as unknown as ProductRow[]).map((r) => mapProduct(r, categorySlugById));
+  return safe(
+    "fetchProducts",
+    async () => {
+      const [res, categorySlugById] = await Promise.all([
+        supabase
+          .from("products")
+          .select(PRODUCT_COLUMNS)
+          .eq("is_active", true)
+          .order("sales_count", { ascending: false }),
+        fetchCategoryMap(),
+      ]);
+      if (res.error) throw res.error;
+      return ((res.data ?? []) as unknown as ProductRow[]).map((r) =>
+        mapProduct(r, categorySlugById),
+      );
+    },
+    [],
+  );
 }
 
-/** Single active product by slug (the public product id), or null. */
+/** Single active product by slug (the public product id), or null on any failure. */
 export async function fetchProductBySlug(slug: string): Promise<Product | null> {
-  const [res, categorySlugById] = await Promise.all([
-    supabase
-      .from("products")
-      .select(PRODUCT_COLUMNS)
-      .eq("slug", slug)
-      .eq("is_active", true)
-      .maybeSingle(),
-    fetchCategoryMap(),
-  ]);
-  if (res.error) throw res.error;
-  return res.data ? mapProduct(res.data as unknown as ProductRow, categorySlugById) : null;
+  return safe(
+    "fetchProductBySlug",
+    async () => {
+      const [res, categorySlugById] = await Promise.all([
+        supabase
+          .from("products")
+          .select(PRODUCT_COLUMNS)
+          .eq("slug", slug)
+          .eq("is_active", true)
+          .maybeSingle(),
+        fetchCategoryMap(),
+      ]);
+      if (res.error) throw res.error;
+      return res.data ? mapProduct(res.data as unknown as ProductRow, categorySlugById) : null;
+    },
+    null,
+  );
 }
 
-/** Active categories in display order. */
+/** Active categories in display order. Empty on any failure. */
 export async function fetchCategories(): Promise<Category[]> {
-  const { data, error } = await supabase
-    .from("categories")
-    .select("slug,name,icon,gradient")
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true });
-  if (error) throw error;
-  return (
-    (data ?? []) as unknown as Array<{
-      slug: string;
-      name: string;
-      icon: string | null;
-      gradient: string | null;
-    }>
-  ).map((c) => ({
-    id: c.slug,
-    name: c.name,
-    icon: c.icon ?? "",
-    gradient: c.gradient ?? "",
-  }));
+  return safe(
+    "fetchCategories",
+    async () => {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("slug,name,icon,gradient")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      return (
+        (data ?? []) as unknown as Array<{
+          slug: string;
+          name: string;
+          icon: string | null;
+          gradient: string | null;
+        }>
+      ).map((c) => ({
+        id: c.slug,
+        name: c.name,
+        icon: c.icon ?? "",
+        gradient: c.gradient ?? "",
+      }));
+    },
+    [],
+  );
 }

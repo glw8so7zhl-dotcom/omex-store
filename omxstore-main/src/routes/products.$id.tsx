@@ -21,6 +21,7 @@ import { SITE_URL } from "@/lib/site";
 import { cn } from "@/lib/utils";
 import { whatsappProductUrl } from "@/lib/whatsapp";
 import { ProductCard } from "@/components/site/ProductCard";
+import { ProductAlertButton } from "@/components/site/ProductAlertButton";
 import { ShareButtons } from "@/components/site/ShareButtons";
 import { StickyBuyBar } from "@/components/site/StickyBuyBar";
 import { ProductReviews } from "@/components/site/ProductReviews";
@@ -207,7 +208,11 @@ function ProductPage() {
                   variant={product.stock > 10 ? "success" : "sale"}
                   className="rounded-full"
                 >
-                  {product.stock > 10 ? "متوفر في المخزون" : `تبقى ${product.stock} فقط`}
+                  {product.stock > 10
+                    ? "متوفر في المخزون"
+                    : product.stock > 0
+                      ? `تبقى ${product.stock} فقط`
+                      : "نفدت الكمية"}
                 </Badge>
                 <span className="text-muted-foreground flex items-center gap-1">
                   <Truck className="h-3.5 w-3.5" />
@@ -240,9 +245,18 @@ function ProductPage() {
 
             {/* Actions */}
             <div className="mt-6 grid grid-cols-2 gap-3">
+              {product.stock <= 0 && (
+                <ProductAlertButton
+                  kind="restock"
+                  productDbId={product.dbId}
+                  size="pillLg"
+                  className="col-span-2"
+                />
+              )}
               <Button
                 variant="glass"
                 size="pillLg"
+                disabled={product.stock <= 0}
                 onClick={() => {
                   add(product, qty);
                   toast.success("تمت الإضافة للسلة");
@@ -254,6 +268,7 @@ function ProductPage() {
               <Button
                 variant="gradientGlow"
                 size="pillLg"
+                disabled={product.stock <= 0}
                 onClick={() => {
                   add(product, qty);
                   navigate({ to: "/checkout" });
@@ -271,20 +286,30 @@ function ProductPage() {
             </div>
 
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <Button
-                type="button"
-                variant="glass"
-                size="pill"
-                aria-pressed={fav}
-                className={cn("h-10 text-xs", fav && "text-sale")}
-                onClick={() => {
-                  toggle(product.id);
-                  toast.success(fav ? "أُزيل من المفضلة" : "أضيف للمفضلة");
-                }}
-              >
-                <Heart className={cn("h-4 w-4", fav && "fill-sale")} />
-                {fav ? "في المفضلة" : "المفضلة"}
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="glass"
+                  size="pill"
+                  aria-pressed={fav}
+                  className={cn("h-10 text-xs", fav && "text-sale")}
+                  onClick={() => {
+                    toggle(product.id);
+                    toast.success(fav ? "أُزيل من المفضلة" : "أضيف للمفضلة");
+                  }}
+                >
+                  <Heart className={cn("h-4 w-4", fav && "fill-sale")} />
+                  {fav ? "في المفضلة" : "المفضلة"}
+                </Button>
+                {product.stock > 0 && (
+                  <ProductAlertButton
+                    kind="price_drop"
+                    productDbId={product.dbId}
+                    size="pill"
+                    className="h-10 text-xs"
+                  />
+                )}
+              </div>
               <ShareButtons title={product.name} />
             </div>
 

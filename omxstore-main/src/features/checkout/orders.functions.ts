@@ -31,6 +31,8 @@ type RpcOrderResult = {
   shipping: number;
   discount: number;
   total: number;
+  points_redeemed?: number;
+  points_discount?: number;
   items: Array<{
     product_id: string;
     product_name: string;
@@ -64,6 +66,7 @@ export const createOrder = createServerFn({ method: "POST" })
       _payment_method: data.paymentMethod,
       _items: data.items.map((i) => ({ product_id: i.productId, qty: i.qty })),
       _coupon_code: data.couponCode?.trim() || null,
+      _redeem_points: data.redeemPoints ?? 0,
     } as never);
 
     if (error || !result) {
@@ -82,6 +85,7 @@ export const createOrder = createServerFn({ method: "POST" })
       shipping: Number(order.shipping),
       discount: Number(order.discount),
       total: Number(order.total),
+      pointsRedeemed: Number(order.points_redeemed ?? 0),
       items: (order.items ?? []).map((i) => ({
         name: i.product_name,
         qty: i.qty,

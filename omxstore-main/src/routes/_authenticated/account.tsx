@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Bell, LogOut, MapPin, Package, Settings, Shield, User } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Bell, Gem, LogOut, MapPin, Package, Settings, Shield, User } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Container } from "@/components/site/Container";
@@ -7,6 +8,8 @@ import { GlassPanel } from "@/components/site/GlassPanel";
 import { IconTile } from "@/components/site/IconTile";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
+import { formatPrice } from "@/lib/products";
 
 export const Route = createFileRoute("/_authenticated/account")({
   head: () => ({ meta: [{ title: "حسابي — OMEX Store" }] }),
@@ -68,6 +71,8 @@ function AccountPage() {
           </div>
         </GlassPanel>
 
+        <PointsCard />
+
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
           {links.map((l) => {
             const inner = (
@@ -104,5 +109,37 @@ function AccountPage() {
         </div>
       </Container>
     </main>
+  );
+}
+
+/** OMEX loyalty points balance — earned 1% per delivered order. */
+function PointsCard() {
+  const { user } = useAuth();
+  const { data: balance = 0 } = useQuery({
+    queryKey: ["loyalty-balance", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("loyalty_ledger").select("points");
+      if (error) throw error;
+      return ((data ?? []) as Array<{ points: number }>).reduce((sum, r) => sum + (r.points ?? 0), 0);
+    },
+  });
+
+  return (
+    <GlassPanel pad="md" className="mt-4">
+      <div className="flex items-center gap-4">
+        <IconTile icon={Gem} size="lg" tone="gradient" />
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-bold">نقاط OMEX</div>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            اكسب 1% نقاطًا من كل طلب مُسلَّم — كل نقطة = 10 ر.ي خصم عند الدفع.
+          </p>
+        </div>
+        <div className="text-left shrink-0">
+          <div className="font-display text-2xl font-black text-gradient">{balance}</div>
+          <div className="text-[10px] text-muted-foreground">= {formatPrice(balance * 10)}</div>
+        </div>
+      </div>
+    </GlassPanel>
   );
 }

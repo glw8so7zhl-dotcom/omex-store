@@ -45,6 +45,7 @@ export const checkoutInputSchema = z.object({
   notes: z.string().trim().max(1000).optional(),
   paymentMethod: z.enum(PAYMENT_METHODS),
   couponCode: z.string().trim().max(40).optional(),
+  redeemPoints: z.number().int().min(0).max(1000000).optional(),
   items: z.array(checkoutItemSchema).min(1, "السلة فارغة"),
 });
 

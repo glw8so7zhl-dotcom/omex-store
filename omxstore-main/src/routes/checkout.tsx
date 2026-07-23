@@ -1,11 +1,13 @@
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Banknote,
+  Check,
   CreditCard,
+  Gem,
   MapPin,
   ShieldCheck,
   ShoppingBag,
@@ -14,7 +16,10 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useCart } from "@/lib/cart";
+import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
 import { formatPrice } from "@/lib/products";
+import { cn } from "@/lib/utils";
 import { Footer } from "@/components/site/Footer";
 import { SummaryRow } from "@/components/site/SummaryRow";
 import { Container } from "@/components/site/Container";
@@ -76,7 +81,24 @@ function CheckoutPage() {
     couponResult && couponResult.code === (form.couponCode ?? "").trim().toUpperCase()
       ? Math.min(couponResult.discount, total)
       : 0;
-  const grand = Math.max(0, total - discount + shipping);
+
+  // OMEX loyalty points: balance from the audit ledger (RLS: own rows),
+  // 1 point = 10 YER, capped server-side too so this is display-only math.
+  const { user } = useAuth();
+  const { data: pointsBalance = 0 } = useQuery({
+    queryKey: ["loyalty-balance", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("loyalty_ledger").select("points");
+      if (error) throw error;
+      return ((data ?? []) as Array<{ points: number }>).reduce((sum, r) => sum + (r.points ?? 0), 0);
+    },
+  });
+  const [usePoints, setUsePoints] = useState(false);
+  const maxRedeemable = Math.min(pointsBalance, Math.floor(Math.max(0, total - discount) / 10));
+  const pointsDiscount = usePoints ? maxRedeemable * 10 : 0;
+
+  const grand = Math.max(0, total - discount - pointsDiscount + shipping);
 
   const applyCoupon = async () => {
     const code = (form.couponCode ?? "").trim();
@@ -126,6 +148,7 @@ function CheckoutPage() {
       ...form,
       notes: form.notes?.trim() || undefined,
       couponCode: form.couponCode?.trim() || undefined,
+      redeemPoints: usePoints && maxRedeemable > 0 ? maxRedeemable : undefined,
       items: items.map((i) => ({ productId: i.product.id, qty: i.qty })),
     };
     const parsed = checkoutInputSchema.safeParse(payload);
@@ -318,12 +341,60 @@ function CheckoutPage() {
                 </Button>
               </div>
 
+              {user && pointsBalance > 0 && (
+                <button
+                  type="button"
+                  aria-pressed={usePoints}
+                  onClick={() => setUsePoints((v) => !v)}
+                  className={cn(
+                    "w-full flex items-center gap-3 rounded-2xl border p-3 text-right transition",
+                    usePoints
+                      ? "border-primary/60 bg-primary/10"
+                      : "border-white/10 bg-surface/70 hover:border-primary/40",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "grid h-5 w-5 shrink-0 place-items-center rounded-md border transition",
+                      usePoints ? "gradient-primary border-transparent" : "border-white/20",
+                    )}
+                  >
+                    {usePoints && <Check className="h-3.5 w-3.5 text-white" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-bold">
+                      <Gem className="inline h-4 w-4 text-primary-glow ml-1" />
+                      استخدم نقاطي ({pointsBalance} نقطة)
+                    </span>
+                    <span className="block text-[11px] text-muted-foreground">
+                      كل نقطة = 10 ر.ي خصم
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-sm font-bold text-success">
+                    - {formatPrice(maxRedeemable * 10)}
+                  </span>
+                </button>
+              )}
+              {!user && (
+                <p className="text-[11px] text-muted-foreground">
+                  🎁 <Link to="/auth" className="text-primary-glow underline">سجّل الدخول</Link>{" "}
+                  لتكسب نقاطًا (1% من كل طلب مُسلَّم) وتستبدلها خصومات حقيقية.
+                </p>
+              )}
+
               <div className="space-y-2 text-sm border-t border-white/10 pt-3">
                 <SummaryRow label="المجموع الفرعي" value={formatPrice(total)} />
                 {discount > 0 && (
                   <SummaryRow
                     label="الخصم"
                     value={`- ${formatPrice(discount)}`}
+                    accent="text-success"
+                  />
+                )}
+                {pointsDiscount > 0 && (
+                  <SummaryRow
+                    label={`خصم النقاط (${maxRedeemable} نقطة)`}
+                    value={`- ${formatPrice(pointsDiscount)}`}
                     accent="text-success"
                   />
                 )}

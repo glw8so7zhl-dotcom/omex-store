@@ -1,10 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { Bell, Flame, Heart, LogIn, ShoppingBag, User } from "lucide-react";
+import { Flame, Heart, LogIn, ShoppingBag, User } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { useCart } from "@/lib/cart";
 import { useWishlist } from "@/lib/wishlist";
 import { useAuth } from "@/hooks/use-auth";
 import { SearchSuggest } from "@/components/site/SearchSuggest";
+import { NotificationBell } from "@/components/site/NotificationBell";
 
 export function Header() {
   const { count } = useCart();
@@ -37,10 +38,7 @@ export function Header() {
               <Flame className="h-4 w-4" />
               العروض
             </Link>
-            <IconBtn label="التنبيهات">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-1.5 left-1.5 h-2 w-2 rounded-full bg-sale animate-pulse-glow" />
-            </IconBtn>
+            <NotificationBell />
             <Link
               to="/favorites"
               aria-label="المفضلة"
@@ -82,24 +80,5 @@ export function Header() {
         </div>
       </div>
     </header>
-  );
-}
-
-function IconBtn({
-  children,
-  label,
-  className = "",
-}: {
-  children: React.ReactNode;
-  label: string;
-  className?: string;
-}) {
-  return (
-    <button
-      aria-label={label}
-      className={`relative inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-surface/70 border border-white/10 hover:border-primary/50 hover:bg-primary/10 transition ${className}`}
-    >
-      {children}
-    </button>
   );
 }

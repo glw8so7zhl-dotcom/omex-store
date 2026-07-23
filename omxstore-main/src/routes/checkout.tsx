@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
@@ -94,6 +94,47 @@ function CheckoutPage() {
     },
   });
   const [usePoints, setUsePoints] = useState(false);
+
+  // Returning customers: prefill delivery details from their last order
+  // (own rows via RLS). Runs once, never overwrites what's already typed.
+  const prefilled = useRef(false);
+  useEffect(() => {
+    if (!user || prefilled.current) return;
+    prefilled.current = true;
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("orders")
+          .select("customer_name,phone,governorate,city,address")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const last = data as unknown as {
+          customer_name: string | null;
+          phone: string | null;
+          governorate: string | null;
+          city: string | null;
+          address: string | null;
+        } | null;
+        if (!last) return;
+        setForm((f) => {
+          const untouched = !f.customerName && !f.phone && !f.city && !f.address;
+          if (!untouched) return f;
+          return {
+            ...f,
+            customerName: last.customer_name ?? f.customerName,
+            phone: last.phone ?? f.phone,
+            governorate: (last.governorate as FormState["governorate"]) ?? f.governorate,
+            city: last.city ?? f.city,
+            address: last.address ?? f.address,
+          };
+        });
+        toast.info("عبّأنا بيانات التوصيل من طلبك السابق ✨");
+      } catch {
+        /* prefill is best-effort */
+      }
+    })();
+  }, [user]);
   const maxRedeemable = Math.min(pointsBalance, Math.floor(Math.max(0, total - discount) / 10));
   const pointsDiscount = usePoints ? maxRedeemable * 10 : 0;
 

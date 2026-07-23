@@ -32,11 +32,16 @@ async function getOptionalUserId(url: string, key: string): Promise<string | nul
   }
 }
 
+// Sanitize env values (strip whitespace + wrapping quotes pasted into
+// dashboard env editors) — prevents "Invalid supabaseUrl" at runtime.
+const cleanEnv = (v: string | undefined) =>
+  (v ?? "").trim().replace(/^["']+|["']+$/g, "").trim();
+
 export const createOrder = createServerFn({ method: "POST" })
   .inputValidator((data: CheckoutInput) => checkoutInputSchema.parse(data))
   .handler(async ({ data }) => {
-    const SUPABASE_URL = process.env.SUPABASE_URL;
-    const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
+    const SUPABASE_URL = cleanEnv(process.env.SUPABASE_URL);
+    const SUPABASE_PUBLISHABLE_KEY = cleanEnv(process.env.SUPABASE_PUBLISHABLE_KEY);
     if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
       throw new Error("تعذّر الاتصال بالخادم. حاول لاحقاً.");
     }

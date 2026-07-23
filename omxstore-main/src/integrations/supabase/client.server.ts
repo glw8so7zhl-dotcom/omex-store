@@ -30,8 +30,12 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 }
 
 function createSupabaseAdminClient() {
-  const SUPABASE_URL = process.env.SUPABASE_URL;
-  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // Sanitize env values (strip whitespace + wrapping quotes pasted into
+  // dashboard env editors) — prevents "Invalid supabaseUrl" at runtime.
+  const clean = (v: string | undefined) =>
+    (v ?? '').trim().replace(/^["']+|["']+$/g, '').trim();
+  const SUPABASE_URL = clean(process.env.SUPABASE_URL);
+  const SUPABASE_SERVICE_ROLE_KEY = clean(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     const missing = [

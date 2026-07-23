@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { Bell, TrendingDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { ResourceManager, type Column, type Field } from "@/components/admin/ResourceManager";
@@ -29,6 +30,23 @@ function InventoryAdmin() {
 
   const productMap = new Map((prods ?? []).map((p) => [p.id, p.name]));
 
+  // Demand signal: customers subscribed to alerts per product (admin RLS read).
+  const { data: alerts } = useQuery({
+    queryKey: ["admin-product-alerts"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("product_alerts").select("product_id,kind");
+      if (error) throw error;
+      return (data ?? []) as unknown as Array<{ product_id: string; kind: string }>;
+    },
+  });
+
+  const restockWaiters = new Map<string, number>();
+  const priceWatchers = new Map<string, number>();
+  for (const a of alerts ?? []) {
+    const m = a.kind === "restock" ? restockWaiters : priceWatchers;
+    m.set(a.product_id, (m.get(a.product_id) ?? 0) + 1);
+  }
+
   const columns: Column<Inventory>[] = [
     {
       key: "product",
@@ -49,6 +67,31 @@ function InventoryAdmin() {
           )}
         </div>
       ),
+    },
+    {
+      key: "waiting",
+      label: "المنتظرون",
+      render: (r) => {
+        const waiting = restockWaiters.get(r.product_id) ?? 0;
+        const watching = priceWatchers.get(r.product_id) ?? 0;
+        if (!waiting && !watching) return <span className="text-muted-foreground">—</span>;
+        return (
+          <div className="space-y-1">
+            {waiting > 0 && (
+              <Badge variant="sale" className="text-[10px] gap-1">
+                <Bell className="h-3 w-3" />
+                {waiting} بانتظار التوفر
+              </Badge>
+            )}
+            {watching > 0 && (
+              <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <TrendingDown className="h-3 w-3" />
+                {watching} يراقبون السعر
+              </div>
+            )}
+          </div>
+        );
+      },
     },
     { key: "low_stock_threshold", label: "حد التنبيه" },
   ];
@@ -72,7 +115,10 @@ function InventoryAdmin() {
   ];
 
   return (
-    <AdminShell title="المخزون" subtitle="متابعة وتحديث كميات المنتجات">
+    <AdminShell
+      title="المخزون"
+      subtitle="متابعة وتحديث الكميات — إعادة التوريد تُخطر العملاء المنتظرين تلقائياً"
+    >
       <ResourceManager<Inventory>
         table="inventory"
         queryKey="admin-inventory"

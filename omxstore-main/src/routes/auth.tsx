@@ -10,10 +10,12 @@ import { TextField } from "@/components/site/TextField";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { claimStoredReferral, storeReferralCode } from "@/lib/referral";
 
 const searchSchema = z.object({
   redirect: z.string().optional(),
   mode: z.enum(["login", "register"]).optional(),
+  ref: z.string().optional(),
 });
 
 export const Route = createFileRoute("/auth")({
@@ -34,8 +36,18 @@ function AuthPage() {
   const { session, loading } = useAuth();
   const [mode, setMode] = useState<"login" | "register">(search.mode ?? "login");
 
+  // Referral invite links: /auth?ref=OMXxxxxxx
+  useEffect(() => {
+    storeReferralCode(search.ref);
+  }, [search.ref]);
+
   useEffect(() => {
     if (!loading && session) {
+      claimStoredReferral().then((claimed) => {
+        if (claimed) {
+          toast.success("تم تسجيل دعوة صديقك 🎁 — ستكسبان 200 نقطة لكل منكما بعد أول طلب مُسلَّم");
+        }
+      });
       const target = search.redirect && search.redirect.startsWith("/") ? search.redirect : "/account";
       navigate({ to: target, replace: true });
     }

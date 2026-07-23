@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Bell, Gem, LogOut, MapPin, Package, Settings, Shield, User } from "lucide-react";
+import { Bell, Copy, Gem, Gift, LogOut, MapPin, Package, Settings, Shield, User } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Container } from "@/components/site/Container";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { formatPrice } from "@/lib/products";
+import { SITE_URL } from "@/lib/site";
 
 export const Route = createFileRoute("/_authenticated/account")({
   head: () => ({ meta: [{ title: "حسابي — OMEX Store" }] }),
@@ -72,6 +73,8 @@ function AccountPage() {
         </GlassPanel>
 
         <PointsCard />
+
+        <ReferralCard />
 
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
           {links.map((l) => {
@@ -138,6 +141,66 @@ function PointsCard() {
         <div className="text-left shrink-0">
           <div className="font-display text-2xl font-black text-gradient">{balance}</div>
           <div className="text-[10px] text-muted-foreground">= {formatPrice(balance * 10)}</div>
+        </div>
+      </div>
+    </GlassPanel>
+  );
+}
+
+/** OMEX referral program — share link; both sides earn 200 points on the friend's first delivered order. */
+function ReferralCard() {
+  const { user } = useAuth();
+  const { data: code } = useQuery({
+    queryKey: ["referral-code", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("my_referral_code" as never);
+      if (error) throw error;
+      return data as unknown as string;
+    },
+  });
+
+  if (!code) return null;
+  const link = `${SITE_URL}/auth?ref=${code}`;
+  const shareText = `انضم إلى متجر OMEX عبر رابط دعوتي واكسب 200 نقطة (= 2,000 ر.ي خصم) مع أول طلب لك 🎁\n${link}`;
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      toast.success("نُسخ رابط الدعوة");
+    } catch {
+      toast.error("تعذّر النسخ — انسخ الرابط يدوياً");
+    }
+  };
+
+  return (
+    <GlassPanel pad="md" className="mt-4">
+      <div className="flex items-start gap-4">
+        <IconTile icon={Gift} size="lg" tone="gradient" />
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-bold">ادعُ صديقك — تكسبان معاً</div>
+          <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+            شارك رابطك؛ عند أول طلب مُسلَّم لصديقك يكسب كلٌّ منكما 200 نقطة (= 2,000 ر.ي خصم).
+          </p>
+          <div className="mt-3 flex items-center gap-2">
+            <code className="flex-1 truncate rounded-xl bg-surface/70 border border-white/10 px-3 py-2 text-[11px] text-muted-foreground" dir="ltr">
+              {link}
+            </code>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Button type="button" variant="glass" size="pill" className="h-9 text-xs" onClick={copy}>
+              <Copy className="h-3.5 w-3.5" /> نسخ الرابط
+            </Button>
+            <Button asChild variant="success" size="pill" className="h-9 text-xs">
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(shareText)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                مشاركة عبر واتساب
+              </a>
+            </Button>
+          </div>
         </div>
       </div>
     </GlassPanel>

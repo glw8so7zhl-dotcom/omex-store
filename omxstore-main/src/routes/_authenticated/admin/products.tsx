@@ -64,7 +64,7 @@ export const Route = createFileRoute("/_authenticated/admin/products")({
   component: ProductsAdmin,
 });
 
-const BUCKET = "product-media";
+const BUCKET = "products";
 
 type Product = {
   id: string;
@@ -145,11 +145,10 @@ async function uploadFile(file: File, folder: "images" | "videos"): Promise<stri
     upsert: false,
   });
   if (error) throw error;
-  const { data, error: sErr } = await supabase.storage
-    .from(BUCKET)
-    .createSignedUrl(path, 60 * 60 * 24 * 365 * 5);
-  if (sErr || !data) throw sErr ?? new Error("Failed to sign URL");
-  return data.signedUrl;
+  // `products` is a public bucket — use a stable public URL (no expiry).
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  if (!data?.publicUrl) throw new Error("Failed to resolve public URL");
+  return data.publicUrl;
 }
 
 function ProductsAdmin() {

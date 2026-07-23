@@ -30,15 +30,29 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 function createSupabaseClient() {
   // Use import.meta.env for client-side (Vite build-time replacement)
   // Fall back to process.env for SSR (server-side rendering)
-  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-  const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
+  // .trim() guards against stray whitespace/newlines in env values — a common
+  // cause of supabase-js "Invalid supabaseUrl". Default to "" so the checks below fire.
+  const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').trim();
+  const SUPABASE_PUBLISHABLE_KEY = (
+    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.SUPABASE_PUBLISHABLE_KEY ||
+    ''
+  ).trim();
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     const missing = [
-      ...(!SUPABASE_URL ? ['SUPABASE_URL'] : []),
-      ...(!SUPABASE_PUBLISHABLE_KEY ? ['SUPABASE_PUBLISHABLE_KEY'] : []),
+      ...(!SUPABASE_URL ? ['SUPABASE_URL / VITE_SUPABASE_URL'] : []),
+      ...(!SUPABASE_PUBLISHABLE_KEY ? ['SUPABASE_PUBLISHABLE_KEY / VITE_SUPABASE_PUBLISHABLE_KEY'] : []),
     ];
-    const message = `Missing Supabase environment variable(s): ${missing.join(', ')}. Connect Supabase in Lovable Cloud.`;
+    const message = `Missing Supabase environment variable(s): ${missing.join(', ')}. Set them in your host (e.g. Vercel → Settings → Environment Variables) and redeploy.`;
+    console.error(`[Supabase] ${message}`);
+    throw new Error(message);
+  }
+
+  // Fail with an actionable message rather than the cryptic supabase-js
+  // "Invalid supabaseUrl" when the value isn't a full http(s) URL.
+  if (!/^https?:\/\//i.test(SUPABASE_URL)) {
+    const message = `Invalid SUPABASE_URL: "${SUPABASE_URL}". Use the full project URL, e.g. https://YOUR-REF.supabase.co (with https://, no quotes/trailing slash).`;
     console.error(`[Supabase] ${message}`);
     throw new Error(message);
   }

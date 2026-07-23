@@ -1,9 +1,31 @@
 import type { Product } from "./products";
 import { formatPrice } from "./products";
 
-// Configurable via VITE_WHATSAPP_NUMBER build-time env; falls back to demo number.
+/**
+ * Official OMEX store WhatsApp number (Yemen, international format for wa.me).
+ * Local number 775878805 → 967775878805.
+ */
+const DEFAULT_WHATSAPP_NUMBER = "967775878805";
+
+/**
+ * Normalize any env-provided value ("+967 77 587 8805", "775878805", …)
+ * into wa.me digits. Falls back to the official store number when the env
+ * is missing or unusable — same resilience approach as supabase-config.
+ */
+function cleanWhatsappNumber(raw: string | undefined): string | null {
+  if (!raw) return null;
+  // Digits only, and no international-dialing leading zeros (0096777… → 96777…).
+  const digits = raw.replace(/\D/g, "").replace(/^0+/, "");
+  if (digits.length < 9) return null;
+  if (digits.startsWith("967")) return digits;
+  if (digits.length === 9 && digits.startsWith("7")) return `967${digits}`;
+  return digits;
+}
+
+// Optional override via VITE_WHATSAPP_NUMBER build-time env.
 export const WHATSAPP_NUMBER =
-  (import.meta.env.VITE_WHATSAPP_NUMBER as string | undefined) ?? "967700000000";
+  cleanWhatsappNumber(import.meta.env.VITE_WHATSAPP_NUMBER as string | undefined) ??
+  DEFAULT_WHATSAPP_NUMBER;
 
 export function whatsappUrl(text: string) {
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;

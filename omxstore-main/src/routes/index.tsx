@@ -8,6 +8,8 @@ import type { Product, Category } from "@/lib/products";
 import { isFlashActive } from "@/lib/products";
 import { fetchProducts, fetchCategories } from "@/lib/catalog";
 import { useCountdown } from "@/hooks/use-countdown";
+import { fetchActiveBanners } from "@/lib/banners";
+import { PromoBanners } from "@/components/site/PromoBanners";
 import { fetchTopReviews, type TopReview } from "@/lib/reviews";
 import { getRecentlyViewed } from "@/lib/recently-viewed";
 import { CategoryChip } from "@/components/site/CategoryChip";
@@ -21,12 +23,13 @@ import { prefersReducedMotion } from "@/lib/motion";
 
 export const Route = createFileRoute("/")({
   loader: async () => {
-    const [products, categories, testimonials] = await Promise.all([
+    const [products, categories, testimonials, banners] = await Promise.all([
       fetchProducts(),
       fetchCategories(),
       fetchTopReviews(6),
+      fetchActiveBanners(),
     ]);
-    return { products, categories, testimonials };
+    return { products, categories, testimonials, banners };
   },
   head: () => ({
     links: [{ rel: "canonical", href: `${SITE_URL}/` }],
@@ -35,7 +38,7 @@ export const Route = createFileRoute("/")({
 });
 
 function HomePage() {
-  const { products, categories, testimonials } = Route.useLoaderData();
+  const { products, categories, testimonials, banners } = Route.useLoaderData();
   const flash = products.filter(isFlashActive);
   const featured = products.filter((p) => p.featured);
 
@@ -43,6 +46,7 @@ function HomePage() {
     <main className="pb-8">
       <HeroSection />
       <CategoriesSection items={categories} />
+      <PromoBanners items={banners} />
       <FlashSaleSection items={flash} />
       <FeaturesRow />
       <FeaturedSection items={featured} />

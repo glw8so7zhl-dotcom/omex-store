@@ -1,8 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { Eye, Heart, MessageCircle, ShoppingBag, Star } from "lucide-react";
+import { Eye, Heart, MessageCircle, ShoppingBag, Star, Timer } from "lucide-react";
 import { motion } from "motion/react";
 import type { Product } from "@/lib/products";
-import { formatPrice } from "@/lib/products";
+import { useCountdown } from "@/hooks/use-countdown";
+import { formatPrice, isFlashActive } from "@/lib/products";
 import { useCart } from "@/lib/cart";
 import { useWishlist } from "@/lib/wishlist";
 import { useQuickView } from "@/components/site/QuickViewProvider";
@@ -22,6 +23,9 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
     product.oldPrice && product.oldPrice > product.price
       ? Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)
       : 0;
+  const flashLabel = useCountdown(
+    isFlashActive(product) && product.flashEndsAt ? product.flashEndsAt : null,
+  );
 
   return (
     <motion.article
@@ -46,6 +50,15 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
             {isNew && (
               <span className="gradient-primary text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-glow-sm">
                 جديد
+              </span>
+            )}
+            {flashLabel && flashLabel !== "00:00:00" && (
+              <span
+                dir="ltr"
+                className="flex items-center gap-1 bg-black/60 backdrop-blur text-white text-[10px] font-mono font-bold px-2 py-1 rounded-full"
+              >
+                <Timer className="h-3 w-3 text-sale" />
+                {flashLabel}
               </span>
             )}
           </div>

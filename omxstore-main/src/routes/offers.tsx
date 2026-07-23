@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Flame, Inbox, Timer } from "lucide-react";
 import { fetchProducts } from "@/lib/catalog";
+import { isFlashActive } from "@/lib/products";
 import { Container } from "@/components/site/Container";
 import { PageHeader } from "@/components/site/PageHeader";
 import { EmptyState } from "@/components/site/EmptyState";
@@ -14,7 +15,7 @@ export const Route = createFileRoute("/offers")({
   loader: async () => {
     const products = await fetchProducts();
     const offers = products
-      .filter((p) => p.flashSale || (p.oldPrice != null && p.oldPrice > p.price))
+      .filter((p) => isFlashActive(p) || (p.oldPrice != null && p.oldPrice > p.price))
       .sort((a, b) => {
         const da = a.oldPrice ? (a.oldPrice - a.price) / a.oldPrice : 0;
         const db = b.oldPrice ? (b.oldPrice - b.price) / b.oldPrice : 0;

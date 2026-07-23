@@ -5,7 +5,9 @@ import { useGSAP } from "@gsap/react";
 import { ArrowLeft, Flame, MessageCircle, Quote, Sparkles, Star, Truck, ShieldCheck, Timer } from "lucide-react";
 import heroBg from "@/assets/hero-bg.webp";
 import type { Product, Category } from "@/lib/products";
+import { isFlashActive } from "@/lib/products";
 import { fetchProducts, fetchCategories } from "@/lib/catalog";
+import { useCountdown } from "@/hooks/use-countdown";
 import { fetchTopReviews, type TopReview } from "@/lib/reviews";
 import { getRecentlyViewed } from "@/lib/recently-viewed";
 import { CategoryChip } from "@/components/site/CategoryChip";
@@ -34,7 +36,7 @@ export const Route = createFileRoute("/")({
 
 function HomePage() {
   const { products, categories, testimonials } = Route.useLoaderData();
-  const flash = products.filter((p) => p.flashSale);
+  const flash = products.filter(isFlashActive);
   const featured = products.filter((p) => p.featured);
 
   return (
@@ -208,6 +210,10 @@ function CategoriesSection({ items }: { items: Category[] }) {
 }
 
 function FlashSaleSection({ items }: { items: Product[] }) {
+  const earliestEnd = items
+    .map((p) => p.flashEndsAt)
+    .filter((d): d is string => !!d)
+    .sort()[0];
   return (
     <section className="relative mx-auto max-w-7xl px-4 py-8">
       <div className="glass-strong rounded-3xl p-4 sm:p-6 relative overflow-hidden shadow-card">
@@ -230,7 +236,7 @@ function FlashSaleSection({ items }: { items: Product[] }) {
               </p>
             </div>
           </div>
-          <CountdownBadge />
+          <CountdownBadge target={earliestEnd} />
         </div>
 
         <div className="relative -mx-4 sm:-mx-6 px-4 sm:px-6 overflow-x-auto scrollbar-hide">
@@ -247,24 +253,28 @@ function FlashSaleSection({ items }: { items: Product[] }) {
   );
 }
 
-function CountdownBadge() {
-  // Live countdown to end of day — replaces the old hard-coded string.
-  const [label, setLabel] = useState("--:--:--");
+function CountdownBadge({ target }: { target?: string }) {
+  // Real deadline (earliest flash_ends_at) when available; otherwise an
+  // end-of-day ticker for deadline-less flash offers.
+  const real = useCountdown(target ?? null);
+  const [fallback, setFallback] = useState("--:--:--");
   useEffect(() => {
-    const target = new Date();
-    target.setHours(24, 0, 0, 0);
+    if (target) return;
+    const eod = new Date();
+    eod.setHours(24, 0, 0, 0);
     const pad = (n: number) => String(n).padStart(2, "0");
     const tick = () => {
-      const ms = Math.max(0, target.getTime() - Date.now());
+      const ms = Math.max(0, eod.getTime() - Date.now());
       const h = Math.floor(ms / 3_600_000);
       const m = Math.floor((ms % 3_600_000) / 60_000);
       const s = Math.floor((ms % 60_000) / 1000);
-      setLabel(`${pad(h)}:${pad(m)}:${pad(s)}`);
+      setFallback(`${pad(h)}:${pad(m)}:${pad(s)}`);
     };
     tick();
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [target]);
+  const label = real ?? fallback;
   return (
     <div className="hidden sm:flex items-center gap-2 rounded-2xl bg-sale/15 border border-sale/30 px-3 py-2 text-sale">
       <Timer className="h-4 w-4" />

@@ -24,9 +24,18 @@ export type Product = {
   stock: number;
   featured?: boolean;
   flashSale?: boolean;
+  /** ISO deadline for the flash sale; undefined/null = no deadline. */
+  flashEndsAt?: string;
   description: string;
   features: string[];
 };
+
+/** Flash offer is live: flagged AND (no deadline OR deadline in the future). */
+export function isFlashActive(p: Pick<Product, "flashSale" | "flashEndsAt">): boolean {
+  if (!p.flashSale) return false;
+  if (!p.flashEndsAt) return true;
+  return new Date(p.flashEndsAt).getTime() > Date.now();
+}
 
 export type Category = {
   id: string;

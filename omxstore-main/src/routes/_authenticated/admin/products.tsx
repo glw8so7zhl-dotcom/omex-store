@@ -94,6 +94,7 @@ type Product = {
   is_active: boolean;
   featured: boolean;
   flash_sale: boolean;
+  flash_ends_at: string | null;
   created_at?: string;
 };
 
@@ -126,7 +127,17 @@ const EMPTY: Omit<Product, "id"> = {
   is_active: true,
   featured: false,
   flash_sale: false,
+  flash_ends_at: null,
 };
+
+/** ISO → value for <input type="datetime-local"> in the admin's local time. */
+function toLocalDT(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
 
 function slugify(s: string) {
   return s
@@ -537,6 +548,7 @@ function ProductDialog({
       is_active: !!v.is_active,
       featured: !!v.featured,
       flash_sale: !!v.flash_sale,
+      flash_ends_at: v.flash_sale && v.flash_ends_at ? v.flash_ends_at : null,
     };
     onSubmit(payload);
   };
@@ -688,6 +700,24 @@ function ProductDialog({
                   onChange={(x) => set("flash_sale", x)}
                 />
               </div>
+
+              {v.flash_sale && (
+                <Fld
+                  label="ينتهي عرض الفلاش في"
+                  helper="يظهر عدّاد تنازلي حقيقي للعملاء ويختفي العرض تلقائياً بعد هذا الوقت. اتركه فارغاً لعرض بلا موعد."
+                >
+                  <Input
+                    type="datetime-local"
+                    value={toLocalDT(v.flash_ends_at)}
+                    onChange={(e) =>
+                      set(
+                        "flash_ends_at",
+                        e.target.value ? new Date(e.target.value).toISOString() : null,
+                      )
+                    }
+                  />
+                </Fld>
+              )}
             </TabsContent>
 
             {/* MEDIA */}

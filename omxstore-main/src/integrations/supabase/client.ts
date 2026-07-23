@@ -28,16 +28,23 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 
 
 function createSupabaseClient() {
-  // Use import.meta.env for client-side (Vite build-time replacement)
-  // Fall back to process.env for SSR (server-side rendering)
   // Sanitize env values: strip whitespace AND wrapping quotes. Values pasted
   // into dashboards (e.g. Vercel) as "https://..." — with literal quotes —
   // are a real-world cause of supabase-js "Invalid supabaseUrl".
   const clean = (v: string | undefined) =>
     (v ?? '').trim().replace(/^["']+|["']+$/g, '').trim();
-  const SUPABASE_URL = clean(import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL);
+
+  // On the SERVER, prefer the RUNTIME process.env so a changed backend takes
+  // effect without a fresh client rebuild (the VITE_* values are inlined at
+  // build time and can be stale). In the BROWSER, only the build-time VITE_*
+  // values exist.
+  const isServer = typeof window === 'undefined';
+  const pick = (viteVal: string | undefined, procVal: string | undefined) =>
+    isServer ? procVal || viteVal : viteVal;
+
+  const SUPABASE_URL = clean(pick(import.meta.env.VITE_SUPABASE_URL, process.env.SUPABASE_URL));
   const SUPABASE_PUBLISHABLE_KEY = clean(
-    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY,
+    pick(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, process.env.SUPABASE_PUBLISHABLE_KEY),
   );
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {

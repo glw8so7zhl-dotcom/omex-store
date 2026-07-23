@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
+import { useQuery } from "@tanstack/react-query";
 import { Search as SearchIcon } from "lucide-react";
 import { fetchProducts } from "@/lib/catalog";
+import { supabase } from "@/integrations/supabase/client";
 import { Container } from "@/components/site/Container";
 import { PageHeader } from "@/components/site/PageHeader";
 import { EmptyState } from "@/components/site/EmptyState";
@@ -27,7 +29,24 @@ function SearchPage() {
   const { q } = Route.useSearch();
   const query = (q ?? "").trim().toLowerCase();
 
-  const results = query
+  // Arabic smart search: ranked slugs from the normalized + typo-tolerant
+  // RPC, hydrated from the already-loaded full catalog. Falls back to the
+  // plain client filter while loading or if the RPC errors.
+  const { data: rankedSlugs } = useQuery({
+    queryKey: ["smart-search", query],
+    enabled: query.length >= 2,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("search_products_v1", {
+        _q: query,
+        _limit: 24,
+      } as never);
+      if (error) throw error;
+      return ((data ?? []) as unknown as Array<{ slug: string }>).map((r) => r.slug);
+    },
+  });
+
+  const bySlug = new Map(products.map((p) => [p.id, p]));
+  const fallback = query
     ? products.filter(
         (p) =>
           p.name.toLowerCase().includes(query) ||
@@ -35,6 +54,9 @@ function SearchPage() {
           p.description.toLowerCase().includes(query),
       )
     : [];
+  const results = rankedSlugs
+    ? rankedSlugs.map((slug) => bySlug.get(slug)).filter((p): p is NonNullable<typeof p> => !!p)
+    : fallback;
 
   return (
     <main className="pb-8">

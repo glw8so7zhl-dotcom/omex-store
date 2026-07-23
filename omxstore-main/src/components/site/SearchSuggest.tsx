@@ -10,8 +10,9 @@ type Suggestion = { slug: string; name: string; image: string; price: number };
 
 /**
  * OMEX — live header search with instant suggestions.
- * Debounced anon query (name/brand ilike) rendering thumbnails + prices,
- * with full keyboard support (↑/↓ to move, Enter to open, Esc to close).
+ * Debounced call to the Arabic smart-search RPC (normalization + trigram
+ * typo tolerance), rendering thumbnails + prices, with full keyboard
+ * support (↑/↓ to move, Enter to open, Esc to close).
  */
 export function SearchSuggest({ className }: { className?: string }) {
   const navigate = useNavigate();
@@ -34,13 +35,11 @@ export function SearchSuggest({ className }: { className?: string }) {
     }
     timer.current = window.setTimeout(async () => {
       try {
-        const { data, error } = await supabase
-          .from("products")
-          .select("slug,name,image,price")
-          .eq("is_active", true)
-          .or(`name.ilike.%${term}%,brand.ilike.%${term}%`)
-          .order("sales_count", { ascending: false })
-          .limit(5);
+        // Arabic smart search: normalized + typo-tolerant (search_products_v1).
+        const { data, error } = await supabase.rpc("search_products_v1", {
+          _q: term,
+          _limit: 5,
+        } as never);
         if (error) throw error;
         const list = ((data ?? []) as Array<{ slug: string; name: string; image: string | null; price: number | string }>).map(
           (r) => ({ slug: r.slug, name: r.name, image: toDisplayImage(r.image), price: Number(r.price) }),

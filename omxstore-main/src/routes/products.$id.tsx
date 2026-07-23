@@ -1,12 +1,11 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   Heart,
   MessageCircle,
   Package,
-  Share2,
   ShieldCheck,
   ShoppingBag,
   Star,
@@ -17,9 +16,13 @@ import { formatPrice } from "@/lib/products";
 import { fetchProductBySlug, fetchProducts } from "@/lib/catalog";
 import { useCart } from "@/lib/cart";
 import { useWishlist } from "@/lib/wishlist";
+import { recordRecentlyViewed } from "@/lib/recently-viewed";
 import { cn } from "@/lib/utils";
 import { whatsappProductUrl } from "@/lib/whatsapp";
 import { ProductCard } from "@/components/site/ProductCard";
+import { ShareButtons } from "@/components/site/ShareButtons";
+import { StickyBuyBar } from "@/components/site/StickyBuyBar";
+import { ProductReviews } from "@/components/site/ProductReviews";
 import { Footer } from "@/components/site/Footer";
 import { QtyStepper } from "@/components/site/QtyStepper";
 import { Container } from "@/components/site/Container";
@@ -65,8 +68,13 @@ function ProductPage() {
   const { product, related } = Route.useLoaderData();
   const { add } = useCart();
   const { has, toggle } = useWishlist();
+  const navigate = useNavigate();
   const fav = has(product.id);
   const [qty, setQty] = useState(1);
+
+  useEffect(() => {
+    recordRecentlyViewed(product.id);
+  }, [product.id]);
 
   const discount =
     product.oldPrice && product.oldPrice > product.price
@@ -252,7 +260,7 @@ function ProductPage() {
                 size="pillLg"
                 onClick={() => {
                   add(product, qty);
-                  toast.success("جاري الانتقال للسلة...");
+                  navigate({ to: "/checkout" });
                 }}
               >
                 شراء الآن
@@ -266,13 +274,13 @@ function ProductPage() {
               </Button>
             </div>
 
-            <div className="mt-4 flex gap-2">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <Button
                 type="button"
                 variant="glass"
                 size="pill"
                 aria-pressed={fav}
-                className={cn("flex-1 h-10 text-xs", fav && "text-sale")}
+                className={cn("h-10 text-xs", fav && "text-sale")}
                 onClick={() => {
                   toggle(product.id);
                   toast.success(fav ? "أُزيل من المفضلة" : "أضيف للمفضلة");
@@ -281,7 +289,7 @@ function ProductPage() {
                 <Heart className={cn("h-4 w-4", fav && "fill-sale")} />
                 {fav ? "في المفضلة" : "المفضلة"}
               </Button>
-              <IconAction icon={Share2} label="مشاركة" />
+              <ShareButtons title={product.name} />
             </div>
 
             {/* Trust */}
@@ -292,6 +300,8 @@ function ProductPage() {
             </div>
           </div>
         </div>
+
+        <ProductReviews productDbId={product.dbId} />
 
         {related.length > 0 && (
           <section className="mt-16">
@@ -304,23 +314,9 @@ function ProductPage() {
           </section>
         )}
       </Container>
+      <StickyBuyBar product={product} />
       <Footer />
     </main>
-  );
-}
-
-function IconAction({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
-  return (
-    <Button
-      type="button"
-      variant="glass"
-      size="pill"
-      className="flex-1 h-10 text-xs"
-      onClick={() => toast.success(label)}
-    >
-      <Icon className="h-4 w-4" />
-      {label}
-    </Button>
   );
 }
 

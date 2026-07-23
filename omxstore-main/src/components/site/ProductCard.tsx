@@ -1,10 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { Heart, MessageCircle, ShoppingBag, Star } from "lucide-react";
+import { Eye, Heart, MessageCircle, ShoppingBag, Star } from "lucide-react";
 import { motion } from "motion/react";
 import type { Product } from "@/lib/products";
 import { formatPrice } from "@/lib/products";
 import { useCart } from "@/lib/cart";
 import { useWishlist } from "@/lib/wishlist";
+import { useQuickView } from "@/components/site/QuickViewProvider";
 import { whatsappProductUrl } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -12,6 +13,7 @@ import { toast } from "sonner";
 export function ProductCard({ product, index = 0 }: { product: Product; index?: number }) {
   const { add } = useCart();
   const { has, toggle } = useWishlist();
+  const quickView = useQuickView();
   const fav = has(product.id);
   const discount =
     product.oldPrice && product.oldPrice > product.price
@@ -52,6 +54,19 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
           >
             <Heart className={cn("h-4 w-4", fav && "fill-sale")} />
           </button>
+          {quickView && (
+            <button
+              type="button"
+              aria-label="معاينة سريعة"
+              onClick={(e) => {
+                e.preventDefault();
+                quickView.open(product);
+              }}
+              className="absolute top-14 left-3 z-10 grid place-items-center h-9 w-9 rounded-full glass transition hover:bg-primary/20 hover:text-primary-glow opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+            >
+              <Eye className="h-4 w-4" />
+            </button>
+          )}
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-primary/10" />
           <img
             src={product.image}

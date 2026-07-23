@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Bell, Heart, LogIn, Search, ShoppingBag, User } from "lucide-react";
+import { Bell, Flame, Heart, LogIn, Search, ShoppingBag, User } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { useCart } from "@/lib/cart";
 import { useWishlist } from "@/lib/wishlist";
@@ -54,6 +54,13 @@ export function Header() {
           </form>
 
           <div className="flex items-center gap-1 md:gap-2 shrink-0">
+            <Link
+              to="/offers"
+              className="hidden md:inline-flex items-center gap-1.5 rounded-2xl bg-sale/15 border border-sale/30 px-3 h-11 text-sm font-bold text-sale hover:bg-sale/25 transition"
+            >
+              <Flame className="h-4 w-4" />
+              العروض
+            </Link>
             <IconBtn label="التنبيهات">
               <Bell className="h-5 w-5" />
               <span className="absolute top-1.5 left-1.5 h-2 w-2 rounded-full bg-sale animate-pulse-glow" />

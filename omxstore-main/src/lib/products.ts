@@ -8,6 +8,8 @@ import speaker from "@/assets/product-speaker.png";
 
 export type Product = {
   id: string;
+  /** Database UUID (present on catalog-loaded products; used by reviews). */
+  dbId?: string;
   name: string;
   brand: string;
   category: string;

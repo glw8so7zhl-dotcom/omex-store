@@ -3,9 +3,9 @@ import { getRequest } from "@tanstack/react-start/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { checkoutInputSchema, type CheckoutInput } from "./schema";
+import { computeCouponDiscount, isCouponUsable, type CouponRow } from "./coupons.functions";
 
 const SHIPPING_FLAT = 3000;
-const COUPON_10 = "OMEX10";
 
 /**
  * Optional auth: if the request carries a valid Supabase bearer token
@@ -92,8 +92,25 @@ export const createOrder = createServerFn({ method: "POST" })
 
     const subtotal = items.reduce((s, i) => s + i.line_total, 0);
     const shipping = subtotal > 0 ? SHIPPING_FLAT : 0;
-    const discount =
-      data.couponCode?.trim().toUpperCase() === COUPON_10 ? Math.round(subtotal * 0.1) : 0;
+
+    // DB-driven coupon validation (authoritative — same rules as validateCoupon).
+    let discount = 0;
+    let couponRow: CouponRow | null = null;
+    const couponCode = data.couponCode?.trim().toUpperCase();
+    if (couponCode) {
+      const { data: coupon, error: couponErr } = await supabaseAdmin
+        .from("coupons")
+        .select("*")
+        .eq("code", couponCode)
+        .maybeSingle();
+      if (couponErr) {
+        console.error("[createOrder] coupon lookup failed", couponErr);
+      } else if (coupon && isCouponUsable(coupon as unknown as CouponRow, subtotal)) {
+        couponRow = coupon as unknown as CouponRow;
+        discount = computeCouponDiscount(couponRow, subtotal);
+      }
+    }
+
     const total = Math.max(0, subtotal - discount + shipping);
 
     // Link the order to the signed-in user when possible (guest checkout still allowed).
@@ -103,6 +120,7 @@ export const createOrder = createServerFn({ method: "POST" })
       .from("orders")
       .insert({
         user_id: userId,
+        coupon_id: couponRow?.id ?? null,
         customer_name: data.customerName,
         phone: data.phone,
         governorate: data.governorate,
@@ -132,6 +150,14 @@ export const createOrder = createServerFn({ method: "POST" })
       // Best-effort cleanup of the orphan order.
       await supabaseAdmin.from("orders").delete().eq("id", orderRow.id);
       throw new Error("تعذّر حفظ منتجات الطلب. حاول مرة أخرى.");
+    }
+
+    // Best-effort usage counter (non-blocking for the customer).
+    if (couponRow) {
+      await supabaseAdmin
+        .from("coupons")
+        .update({ used_count: couponRow.used_count + 1 })
+        .eq("id", couponRow.id);
     }
 
     return {

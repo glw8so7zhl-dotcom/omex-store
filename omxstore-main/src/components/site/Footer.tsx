@@ -1,5 +1,8 @@
-import { Facebook, Instagram, MessageCircle } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Facebook, Instagram, MessageCircle, PackageSearch } from "lucide-react";
 import { whatsappUrl } from "@/lib/whatsapp";
+
+type FooterLink = { label: string; to: string };
 
 export function Footer() {
   return (
@@ -19,10 +22,33 @@ export function Footer() {
             متجر أومكس — تجربة تسوق مستقبلية بأفضل المنتجات الأصلية وتوصيل لجميع المحافظات
             اليمنية.
           </p>
+          <Link
+            to="/track"
+            className="mt-4 inline-flex items-center gap-2 rounded-2xl glass px-4 py-2 text-sm font-semibold hover:border-primary/40 transition"
+          >
+            <PackageSearch className="h-4 w-4 text-primary-glow" />
+            تتبّع طلبك
+          </Link>
         </div>
 
-        <FooterCol title="الشركة" items={["من نحن", "سياسة الخصوصية", "الشروط والأحكام"]} />
-        <FooterCol title="الدعم" items={["الشحن والتوصيل", "الاسترجاع", "تواصل معنا"]} />
+        <FooterCol
+          title="الشركة"
+          items={[
+            { label: "من نحن", to: "/pages/about-us" },
+            { label: "سياسة الخصوصية", to: "/pages/privacy-policy" },
+            { label: "الشروط والأحكام", to: "/pages/terms" },
+            { label: "العروض", to: "/offers" },
+          ]}
+        />
+        <FooterCol
+          title="الدعم"
+          items={[
+            { label: "الشحن والتوصيل", to: "/pages/shipping-policy" },
+            { label: "سياسة الاسترجاع", to: "/pages/return-policy" },
+            { label: "الأسئلة الشائعة", to: "/pages/faq" },
+            { label: "تتبّع الطلب", to: "/track" },
+          ]}
+        />
 
         <div>
           <h4 className="font-display font-bold mb-3">تابعنا</h4>
@@ -30,13 +56,16 @@ export function Footer() {
             <SocialBtn href={whatsappUrl("مرحبا")} label="واتساب">
               <MessageCircle className="h-4 w-4" />
             </SocialBtn>
-            <SocialBtn href="#" label="فيسبوك">
+            <SocialBtn href="https://facebook.com" label="فيسبوك">
               <Facebook className="h-4 w-4" />
             </SocialBtn>
-            <SocialBtn href="#" label="انستقرام">
+            <SocialBtn href="https://instagram.com" label="انستقرام">
               <Instagram className="h-4 w-4" />
             </SocialBtn>
           </div>
+          <p className="mt-4 text-xs text-muted-foreground leading-relaxed">
+            الدفع عند الاستلام متاح لجميع المحافظات · دعم واتساب على مدار الساعة.
+          </p>
         </div>
       </div>
       <div className="border-t border-white/5">
@@ -48,16 +77,16 @@ export function Footer() {
   );
 }
 
-function FooterCol({ title, items }: { title: string; items: string[] }) {
+function FooterCol({ title, items }: { title: string; items: FooterLink[] }) {
   return (
     <div>
       <h4 className="font-display font-bold mb-3">{title}</h4>
       <ul className="space-y-2 text-sm text-muted-foreground">
         {items.map((i) => (
-          <li key={i}>
-            <a href="#" className="hover:text-primary-glow transition">
-              {i}
-            </a>
+          <li key={i.to}>
+            <Link to={i.to} className="hover:text-primary-glow transition">
+              {i.label}
+            </Link>
           </li>
         ))}
       </ul>

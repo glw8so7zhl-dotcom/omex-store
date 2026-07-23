@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -30,6 +30,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { createOrder } from "@/features/checkout/orders.functions";
+import { validateCoupon } from "@/features/checkout/coupons.functions";
 import {
   YEMEN_GOVERNORATES,
   checkoutInputSchema,
@@ -68,11 +69,34 @@ function CheckoutPage() {
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
 
   const shipping = total > 0 ? 3000 : 0;
-  const discount = useMemo(
-    () => (form.couponCode?.trim().toUpperCase() === "OMEX10" ? Math.round(total * 0.1) : 0),
-    [form.couponCode, total],
-  );
+  const [couponResult, setCouponResult] = useState<{ code: string; discount: number } | null>(null);
+  const [couponBusy, setCouponBusy] = useState(false);
+  const validateCouponFn = useServerFn(validateCoupon);
+  const discount =
+    couponResult && couponResult.code === (form.couponCode ?? "").trim().toUpperCase()
+      ? Math.min(couponResult.discount, total)
+      : 0;
   const grand = Math.max(0, total - discount + shipping);
+
+  const applyCoupon = async () => {
+    const code = (form.couponCode ?? "").trim();
+    if (!code) return;
+    setCouponBusy(true);
+    try {
+      const res = await validateCouponFn({ data: { code, subtotal: total } });
+      if (res.valid) {
+        setCouponResult({ code: code.toUpperCase(), discount: res.discount });
+        toast.success(res.message);
+      } else {
+        setCouponResult(null);
+        toast.error(res.message);
+      }
+    } catch {
+      toast.error("تعذّر التحقق من الكوبون.");
+    } finally {
+      setCouponBusy(false);
+    }
+  };
 
   const createOrderFn = useServerFn(createOrder);
   const mutation = useMutation({
@@ -272,13 +296,27 @@ function CheckoutPage() {
                 ))}
               </ul>
 
-              <input
-                value={form.couponCode ?? ""}
-                onChange={(e) => update("couponCode", e.target.value)}
-                placeholder="كود الخصم (OMEX10)"
-                aria-label="كود الخصم"
-                className="w-full h-11 rounded-2xl bg-surface/70 border border-white/10 px-3 text-sm placeholder:text-muted-foreground focus:border-primary/50 outline-none"
-              />
+              <div className="flex gap-2">
+                <input
+                  value={form.couponCode ?? ""}
+                  onChange={(e) => {
+                    update("couponCode", e.target.value);
+                    setCouponResult(null);
+                  }}
+                  placeholder="كود الخصم"
+                  aria-label="كود الخصم"
+                  className="flex-1 h-11 rounded-2xl bg-surface/70 border border-white/10 px-3 text-sm placeholder:text-muted-foreground focus:border-primary/50 outline-none"
+                />
+                <Button
+                  type="button"
+                  variant="gradient"
+                  size="pill"
+                  onClick={applyCoupon}
+                  disabled={couponBusy}
+                >
+                  {couponBusy ? <Spinner size="sm" className="text-white" /> : "تطبيق"}
+                </Button>
+              </div>
 
               <div className="space-y-2 text-sm border-t border-white/10 pt-3">
                 <SummaryRow label="المجموع الفرعي" value={formatPrice(total)} />

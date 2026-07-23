@@ -13,6 +13,7 @@ import { CartProvider } from "@/lib/cart";
 import { WishlistProvider } from "@/lib/wishlist";
 import { AuthProvider } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
+import { QuickViewProvider } from "@/components/site/QuickViewProvider";
 import { Header } from "@/components/site/Header";
 import { BottomNav } from "@/components/site/BottomNav";
 import { WhatsAppFab } from "@/components/site/WhatsAppFab";
@@ -169,16 +170,18 @@ function RootComponent() {
       <AuthProvider>
         <CartProvider>
           <WishlistProvider>
-            <div className="relative min-h-screen">
-              <RouteProgress />
-              <Header />
-              <PageTransition>
-                <Outlet />
-              </PageTransition>
-              <BottomNav />
-              <WhatsAppFab />
-            </div>
-            <Toaster position="top-center" richColors />
+            <QuickViewProvider>
+              <div className="relative min-h-screen">
+                <RouteProgress />
+                <Header />
+                <PageTransition>
+                  <Outlet />
+                </PageTransition>
+                <BottomNav />
+                <WhatsAppFab />
+              </div>
+              <Toaster position="top-center" richColors />
+            </QuickViewProvider>
           </WishlistProvider>
         </CartProvider>
       </AuthProvider>

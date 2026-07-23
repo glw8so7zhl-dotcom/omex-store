@@ -2,27 +2,34 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
-import { ArrowLeft, Flame, MessageCircle, Sparkles, Truck, ShieldCheck, Timer } from "lucide-react";
+import { ArrowLeft, Flame, MessageCircle, Quote, Sparkles, Star, Truck, ShieldCheck, Timer } from "lucide-react";
 import heroBg from "@/assets/hero-bg.webp";
 import type { Product, Category } from "@/lib/products";
 import { fetchProducts, fetchCategories } from "@/lib/catalog";
+import { fetchTopReviews, type TopReview } from "@/lib/reviews";
+import { getRecentlyViewed } from "@/lib/recently-viewed";
 import { CategoryChip } from "@/components/site/CategoryChip";
 import { ProductCard } from "@/components/site/ProductCard";
 import { Footer } from "@/components/site/Footer";
+import { GlassPanel } from "@/components/site/GlassPanel";
 import { HeroCanvas } from "@/components/three/HeroCanvas";
 import { whatsappUrl } from "@/lib/whatsapp";
 import { prefersReducedMotion } from "@/lib/motion";
 
 export const Route = createFileRoute("/")({
   loader: async () => {
-    const [products, categories] = await Promise.all([fetchProducts(), fetchCategories()]);
-    return { products, categories };
+    const [products, categories, testimonials] = await Promise.all([
+      fetchProducts(),
+      fetchCategories(),
+      fetchTopReviews(6),
+    ]);
+    return { products, categories, testimonials };
   },
   component: HomePage,
 });
 
 function HomePage() {
-  const { products, categories } = Route.useLoaderData();
+  const { products, categories, testimonials } = Route.useLoaderData();
   const flash = products.filter((p) => p.flashSale);
   const featured = products.filter((p) => p.featured);
 
@@ -34,8 +41,58 @@ function HomePage() {
       <FeaturesRow />
       <FeaturedSection items={featured} />
       <NewArrivalsSection items={products} />
+      <RecentlyViewedSection all={products} />
+      <TestimonialsSection items={testimonials} />
       <Footer />
     </main>
+  );
+}
+
+function RecentlyViewedSection({ all }: { all: Product[] }) {
+  const [items, setItems] = useState<Product[]>([]);
+  useEffect(() => {
+    const slugs = getRecentlyViewed();
+    if (!slugs.length) return;
+    const bySlug = new Map(all.map((p) => [p.id, p]));
+    setItems(slugs.map((s) => bySlug.get(s)).filter((p): p is Product => !!p).slice(0, 4));
+  }, [all]);
+  if (items.length === 0) return null;
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-10">
+      <SectionHeader title="شاهدتها مؤخراً" subtitle="تابع من حيث توقفت" />
+      <div className="mt-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {items.map((p, i) => (
+          <ProductCard key={p.id} product={p} index={i} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function TestimonialsSection({ items }: { items: TopReview[] }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-10">
+      <SectionHeader title="آراء العملاء" subtitle="تجارب حقيقية من عملائنا" />
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {items.map((r, i) => (
+          <GlassPanel key={i} pad="lg" className="space-y-3">
+            <Quote className="h-6 w-6 text-primary-glow" />
+            <p className="text-sm text-muted-foreground leading-relaxed line-clamp-4">{r.body}</p>
+            <div className="flex items-center gap-1 pt-1">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <Star
+                  key={n}
+                  className={
+                    n <= r.rating ? "h-4 w-4 fill-amber-400 text-amber-400" : "h-4 w-4 text-muted-foreground/40"
+                  }
+                />
+              ))}
+            </div>
+          </GlassPanel>
+        ))}
+      </div>
+    </section>
   );
 }
 

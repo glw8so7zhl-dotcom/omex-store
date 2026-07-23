@@ -41,14 +41,16 @@ export const createOrder = createServerFn({ method: "POST" })
       throw new Error("تعذّر الاتصال بالخادم. حاول لاحقاً.");
     }
 
-    const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-      auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
-    });
+    // Orders are created by the trusted server ONLY, via the service-role
+    // client (bypasses RLS). Client-side INSERT on orders/order_items is
+    // disabled by RLS — this closes the price/total-tampering hole while
+    // still allowing guest checkout. Requires SUPABASE_SERVICE_ROLE_KEY.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // Build the trusted product map from the DATABASE — never trust client
     // prices, and never fall back to stale static data.
     const requestedSlugs = Array.from(new Set(data.items.map((i) => i.productId)));
-    const { data: productRows, error: productErr } = await supabase
+    const { data: productRows, error: productErr } = await supabaseAdmin
       .from("products")
       .select("slug,name,price,is_active")
       .in("slug", requestedSlugs);
@@ -92,7 +94,7 @@ export const createOrder = createServerFn({ method: "POST" })
     // Link the order to the signed-in user when possible (guest checkout still allowed).
     const userId = await getOptionalUserId(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
-    const { data: orderRow, error: orderErr } = await supabase
+    const { data: orderRow, error: orderErr } = await supabaseAdmin
       .from("orders")
       .insert({
         user_id: userId,
@@ -116,14 +118,14 @@ export const createOrder = createServerFn({ method: "POST" })
       throw new Error("تعذّر إنشاء الطلب. حاول مرة أخرى.");
     }
 
-    const { error: itemsErr } = await supabase
+    const { error: itemsErr } = await supabaseAdmin
       .from("order_items")
       .insert(items.map((i) => ({ ...i, order_id: orderRow.id })));
 
     if (itemsErr) {
       console.error("[createOrder] insert items failed", itemsErr);
       // Best-effort cleanup of the orphan order.
-      await supabase.from("orders").delete().eq("id", orderRow.id);
+      await supabaseAdmin.from("orders").delete().eq("id", orderRow.id);
       throw new Error("تعذّر حفظ منتجات الطلب. حاول مرة أخرى.");
     }
 

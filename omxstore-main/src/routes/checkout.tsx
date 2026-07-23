@@ -19,7 +19,6 @@ import { useCart } from "@/lib/cart";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { formatPrice } from "@/lib/products";
-import { cn } from "@/lib/utils";
 import { Footer } from "@/components/site/Footer";
 import { SummaryRow } from "@/components/site/SummaryRow";
 import { Container } from "@/components/site/Container";

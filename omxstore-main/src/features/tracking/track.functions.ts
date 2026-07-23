@@ -1,11 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
+import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import type { Database } from "@/integrations/supabase/types";
+import { resolvePublicSupabaseConfig } from "@/lib/supabase-config";
 
 /**
- * OMEX — guest order tracking.
- * Verification: full order UUID + the last 4 digits of the phone used on the
- * order. Runs server-side with the service-role client (RLS stays closed to
- * clients). Returns only non-sensitive fields — no address/phone/name echo.
+ * Guest order tracking — delegated to the `track_order_v1` SECURITY DEFINER
+ * function. Verification: full order UUID + last 4 digits of the order's
+ * phone. Returns only non-sensitive fields. No service-role key required.
  */
 const trackInputSchema = z.object({
   orderId: z.string().trim().uuid("رقم الطلب غير صالح"),
@@ -32,48 +34,56 @@ export type TrackedOrder = {
 export const trackOrder = createServerFn({ method: "POST" })
   .inputValidator((data: TrackInput) => trackInputSchema.parse(data))
   .handler(async ({ data }): Promise<{ found: boolean; order?: TrackedOrder }> => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { url, key } = resolvePublicSupabaseConfig(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_PUBLISHABLE_KEY,
+    );
+    const supabase = createClient<Database>(url, key, {
+      auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
+    });
 
-    const { data: order, error } = await supabaseAdmin
-      .from("orders")
-      .select("id,status,created_at,payment_method,subtotal,shipping,discount,total,phone")
-      .eq("id", data.orderId)
-      .maybeSingle();
+    const { data: result, error } = await supabase.rpc("track_order_v1", {
+      _order_id: data.orderId,
+      _phone_last4: data.phoneLast4,
+    } as never);
 
-    if (error) {
-      console.error("[trackOrder] lookup failed", error);
+    if (error || !result) {
+      console.error("[trackOrder] rpc failed", error);
       throw new Error("تعذّر البحث عن الطلب. حاول لاحقاً.");
     }
 
-    // Verify ownership via the last 4 digits of the order's phone.
-    const digits = String(order?.phone ?? "").replace(/\D/g, "");
-    if (!order || !digits.endsWith(data.phoneLast4)) {
-      return { found: false };
-    }
+    const r = result as unknown as {
+      found: boolean;
+      order?: {
+        id: string;
+        status: string;
+        created_at: string;
+        payment_method: string;
+        subtotal: number | string;
+        shipping: number | string;
+        discount: number | string;
+        total: number | string;
+        items: Array<{ product_name: string; qty: number; line_total: number | string }>;
+      };
+    };
 
-    const { data: items, error: itemsErr } = await supabaseAdmin
-      .from("order_items")
-      .select("product_name,qty,line_total")
-      .eq("order_id", order.id);
-
-    if (itemsErr) {
-      console.error("[trackOrder] items lookup failed", itemsErr);
-    }
-
+    if (!r.found || !r.order) return { found: false };
     return {
       found: true,
       order: {
-        id: order.id,
-        status: order.status,
-        created_at: order.created_at,
-        payment_method: order.payment_method,
-        subtotal: Number(order.subtotal),
-        shipping: Number(order.shipping),
-        discount: Number(order.discount),
-        total: Number(order.total),
-        items: ((items ?? []) as Array<{ product_name: string; qty: number; line_total: number }>).map(
-          (i) => ({ ...i, line_total: Number(i.line_total) }),
-        ),
+        id: r.order.id,
+        status: r.order.status,
+        created_at: r.order.created_at,
+        payment_method: r.order.payment_method,
+        subtotal: Number(r.order.subtotal),
+        shipping: Number(r.order.shipping),
+        discount: Number(r.order.discount),
+        total: Number(r.order.total),
+        items: (r.order.items ?? []).map((i) => ({
+          product_name: i.product_name,
+          qty: i.qty,
+          line_total: Number(i.line_total),
+        })),
       },
     };
   });

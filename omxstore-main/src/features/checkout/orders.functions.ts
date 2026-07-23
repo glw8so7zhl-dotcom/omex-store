@@ -2,174 +2,90 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { resolvePublicSupabaseConfig } from "@/lib/supabase-config";
 import { checkoutInputSchema, type CheckoutInput } from "./schema";
-import { computeCouponDiscount, isCouponUsable, type CouponRow } from "./coupons.functions";
-
-const SHIPPING_FLAT = 3000;
 
 /**
- * Optional auth: if the request carries a valid Supabase bearer token
- * (attached by the global `attachSupabaseAuth` client middleware), return the
- * user id so the order is linked to the account. Guests → null. Never throws;
- * any problem degrades gracefully to a guest order.
+ * Order creation — delegated to the trusted `create_order_v1` SECURITY
+ * DEFINER function inside Postgres. All pricing/coupon rules run in the
+ * database (never trusting the client), and NO service-role key is needed.
+ * The caller's bearer token (attached by the global auth middleware) is
+ * forwarded so auth.uid() inside the RPC attributes the order to the
+ * signed-in user; guests stay anonymous.
  */
-async function getOptionalUserId(url: string, key: string): Promise<string | null> {
+function getForwardedBearer(): string | null {
   try {
     const request = getRequest();
     const authHeader = request?.headers?.get("authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
     const token = authHeader.slice("Bearer ".length).trim();
-    if (token.split(".").length !== 3) return null;
-
-    const authClient = createClient<Database>(url, key, {
-      auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
-    });
-    const { data, error } = await authClient.auth.getClaims(token);
-    if (error || !data?.claims?.sub) return null;
-    return String(data.claims.sub);
+    return token.split(".").length === 3 ? token : null;
   } catch {
     return null;
   }
 }
 
-// Sanitize env values (strip whitespace + wrapping quotes pasted into
-// dashboard env editors) — prevents "Invalid supabaseUrl" at runtime.
-const cleanEnv = (v: string | undefined) =>
-  (v ?? "").trim().replace(/^["']+|["']+$/g, "").trim();
+type RpcOrderResult = {
+  order_id: string;
+  subtotal: number;
+  shipping: number;
+  discount: number;
+  total: number;
+  items: Array<{
+    product_id: string;
+    product_name: string;
+    unit_price: number;
+    qty: number;
+    line_total: number;
+  }>;
+};
 
 export const createOrder = createServerFn({ method: "POST" })
   .inputValidator((data: CheckoutInput) => checkoutInputSchema.parse(data))
   .handler(async ({ data }) => {
-    const SUPABASE_URL = cleanEnv(process.env.SUPABASE_URL);
-    const SUPABASE_PUBLISHABLE_KEY = cleanEnv(process.env.SUPABASE_PUBLISHABLE_KEY);
-    if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-      throw new Error("تعذّر الاتصال بالخادم. حاول لاحقاً.");
-    }
-
-    // Orders are created by the trusted server ONLY, via the service-role
-    // client (bypasses RLS). Client-side INSERT on orders/order_items is
-    // disabled by RLS — this closes the price/total-tampering hole while
-    // still allowing guest checkout. Requires SUPABASE_SERVICE_ROLE_KEY.
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    // Build the trusted product map from the DATABASE — never trust client
-    // prices, and never fall back to stale static data.
-    const requestedSlugs = Array.from(new Set(data.items.map((i) => i.productId)));
-    const { data: productRows, error: productErr } = await supabaseAdmin
-      .from("products")
-      .select("slug,name,price,is_active")
-      .in("slug", requestedSlugs);
-
-    if (productErr) {
-      console.error("[createOrder] product lookup failed", productErr);
-      throw new Error("تعذّر التحقق من المنتجات. حاول مرة أخرى.");
-    }
-
-    const productMap = new Map(
-      ((productRows ?? []) as Array<{
-        slug: string;
-        name: string;
-        price: number | string;
-        is_active: boolean;
-      }>).map((p) => [p.slug, p]),
+    const { url, key } = resolvePublicSupabaseConfig(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_PUBLISHABLE_KEY,
     );
 
-    const items = data.items.map((item) => {
-      const product = productMap.get(item.productId);
-      if (!product || !product.is_active) {
-        throw new Error(`المنتج غير متوفر: ${item.productId}`);
-      }
-      const unitPrice = Number(product.price);
-      const qty = item.qty;
-      return {
-        product_id: product.slug,
-        product_name: product.name,
-        unit_price: unitPrice,
-        qty,
-        line_total: unitPrice * qty,
-      };
+    const token = getForwardedBearer();
+    const supabase = createClient<Database>(url, key, {
+      global: token ? { headers: { Authorization: `Bearer ${token}` } } : undefined,
+      auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
     });
 
-    const subtotal = items.reduce((s, i) => s + i.line_total, 0);
-    const shipping = subtotal > 0 ? SHIPPING_FLAT : 0;
+    const { data: result, error } = await supabase.rpc("create_order_v1", {
+      _customer_name: data.customerName,
+      _phone: data.phone,
+      _governorate: data.governorate,
+      _city: data.city,
+      _address: data.address,
+      _notes: data.notes ?? null,
+      _payment_method: data.paymentMethod,
+      _items: data.items.map((i) => ({ product_id: i.productId, qty: i.qty })),
+      _coupon_code: data.couponCode?.trim() || null,
+    } as never);
 
-    // DB-driven coupon validation (authoritative — same rules as validateCoupon).
-    let discount = 0;
-    let couponRow: CouponRow | null = null;
-    const couponCode = data.couponCode?.trim().toUpperCase();
-    if (couponCode) {
-      const { data: coupon, error: couponErr } = await supabaseAdmin
-        .from("coupons")
-        .select("*")
-        .eq("code", couponCode)
-        .maybeSingle();
-      if (couponErr) {
-        console.error("[createOrder] coupon lookup failed", couponErr);
-      } else if (coupon && isCouponUsable(coupon as unknown as CouponRow, subtotal)) {
-        couponRow = coupon as unknown as CouponRow;
-        discount = computeCouponDiscount(couponRow, subtotal);
+    if (error || !result) {
+      console.error("[createOrder] rpc failed", error);
+      const msg = String(error?.message ?? "");
+      if (msg.includes("unknown_product")) {
+        throw new Error("أحد المنتجات لم يعد متوفراً. حدّث السلة وحاول مجدداً.");
       }
-    }
-
-    const total = Math.max(0, subtotal - discount + shipping);
-
-    // Link the order to the signed-in user when possible (guest checkout still allowed).
-    const userId = await getOptionalUserId(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-
-    const { data: orderRow, error: orderErr } = await supabaseAdmin
-      .from("orders")
-      .insert({
-        user_id: userId,
-        coupon_id: couponRow?.id ?? null,
-        customer_name: data.customerName,
-        phone: data.phone,
-        governorate: data.governorate,
-        city: data.city,
-        address: data.address,
-        notes: data.notes ?? null,
-        payment_method: data.paymentMethod,
-        subtotal,
-        shipping,
-        discount,
-        total,
-      })
-      .select("id")
-      .single();
-
-    if (orderErr || !orderRow) {
-      console.error("[createOrder] insert order failed", orderErr);
       throw new Error("تعذّر إنشاء الطلب. حاول مرة أخرى.");
     }
 
-    const { error: itemsErr } = await supabaseAdmin
-      .from("order_items")
-      .insert(items.map((i) => ({ ...i, order_id: orderRow.id })));
-
-    if (itemsErr) {
-      console.error("[createOrder] insert items failed", itemsErr);
-      // Best-effort cleanup of the orphan order.
-      await supabaseAdmin.from("orders").delete().eq("id", orderRow.id);
-      throw new Error("تعذّر حفظ منتجات الطلب. حاول مرة أخرى.");
-    }
-
-    // Best-effort usage counter (non-blocking for the customer).
-    if (couponRow) {
-      await supabaseAdmin
-        .from("coupons")
-        .update({ used_count: couponRow.used_count + 1 })
-        .eq("id", couponRow.id);
-    }
-
+    const order = result as unknown as RpcOrderResult;
     return {
-      orderId: orderRow.id,
-      subtotal,
-      shipping,
-      discount,
-      total,
-      items: items.map((i) => ({
+      orderId: order.order_id,
+      subtotal: Number(order.subtotal),
+      shipping: Number(order.shipping),
+      discount: Number(order.discount),
+      total: Number(order.total),
+      items: (order.items ?? []).map((i) => ({
         name: i.product_name,
         qty: i.qty,
-        lineTotal: i.line_total,
+        lineTotal: Number(i.line_total),
       })),
     };
   });

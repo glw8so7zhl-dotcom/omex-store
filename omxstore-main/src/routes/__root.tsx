@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { QuickViewProvider } from "@/components/site/QuickViewProvider";
 import { BackToTop } from "@/components/site/BackToTop";
 import { Header } from "@/components/site/Header";
+import { PwaInstall } from "@/components/site/PwaInstall";
 import { BottomNav } from "@/components/site/BottomNav";
 import { WhatsAppFab } from "@/components/site/WhatsAppFab";
 import { PageTransition } from "@/components/system/PageTransition";
@@ -123,6 +124,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/icon.svg", type: "image/svg+xml" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/icon.svg" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       ...(SUPABASE_ORIGIN
@@ -181,6 +185,7 @@ function RootComponent() {
                 </PageTransition>
                 <BottomNav />
                 <WhatsAppFab />
+                <PwaInstall />
                 <BackToTop />
               </div>
               <Toaster position="top-center" richColors />

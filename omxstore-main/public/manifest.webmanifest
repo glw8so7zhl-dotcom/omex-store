@@ -1,0 +1,37 @@
+{
+  "name": "متجر OMEX — اختيارك الأفضل",
+  "short_name": "OMEX",
+  "description": "تسوّق الإلكترونيات وأكثر مع توصيل لجميع محافظات اليمن — نقاط ولاء، تنبيهات توفر، ودفع عند الاستلام.",
+  "id": "/",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#050816",
+  "theme_color": "#050816",
+  "categories": ["shopping"],
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" },
+    { "src": "/favicon.ico", "sizes": "48x48", "type": "image/x-icon" }
+  ],
+  "shortcuts": [
+    {
+      "name": "العروض",
+      "url": "/offers",
+      "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "تتبع الطلب",
+      "url": "/track",
+      "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "السلة",
+      "url": "/cart",
+      "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    }
+  ]
+}

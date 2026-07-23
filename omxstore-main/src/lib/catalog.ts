@@ -18,10 +18,11 @@ import type { Product, Category } from "@/lib/products";
  */
 
 const PRODUCT_COLUMNS =
-  "id,slug,name,brand,description,features,image,price,old_price,rating,reviews_count,sales_count,stock,featured,flash_sale,category_id";
+  "id,slug,name,brand,description,features,image,price,old_price,rating,reviews_count,sales_count,stock,featured,flash_sale,category_id,created_at";
 
 type ProductRow = {
   id: string;
+  created_at: string | null;
   slug: string;
   name: string;
   brand: string | null;
@@ -65,7 +66,7 @@ async function fetchCategoryMap(): Promise<Map<string, string>> {
  * the storefront serves .webp. Scoped to /products/ so admin-uploaded images
  * (Supabase Storage URLs) pass through untouched.
  */
-function toDisplayImage(src: string | null): string {
+export function toDisplayImage(src: string | null): string {
   const s = src ?? "";
   return s.startsWith("/products/") ? s.replace(/\.png$/i, ".webp") : s;
 }
@@ -74,6 +75,7 @@ function mapProduct(row: ProductRow, categorySlugById: Map<string, string>): Pro
   return {
     id: row.slug,
     dbId: row.id,
+    createdAt: row.created_at ?? undefined,
     name: row.name,
     brand: row.brand ?? "",
     category: row.category_id ? (categorySlugById.get(row.category_id) ?? "") : "",

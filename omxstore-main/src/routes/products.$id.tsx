@@ -17,6 +17,7 @@ import { fetchProductBySlug, fetchProducts } from "@/lib/catalog";
 import { useCart } from "@/lib/cart";
 import { useWishlist } from "@/lib/wishlist";
 import { recordRecentlyViewed } from "@/lib/recently-viewed";
+import { SITE_URL } from "@/lib/site";
 import { cn } from "@/lib/utils";
 import { whatsappProductUrl } from "@/lib/whatsapp";
 import { ProductCard } from "@/components/site/ProductCard";
@@ -50,6 +51,9 @@ export const Route = createFileRoute("/products/$id")({
           { property: "og:image", content: loaderData.product.image },
         ]
       : [{ title: "المنتج غير موجود" }],
+    links: loaderData
+      ? [{ rel: "canonical", href: `${SITE_URL}/products/${loaderData.product.id}` }]
+      : [],
   }),
   component: ProductPage,
   notFoundComponent: () => (
@@ -141,15 +145,7 @@ function ProductPage() {
                 </Badge>
               )}
               <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-fuchsia-500/10" />
-              <img
-                src={product.image}
-                alt={product.name}
-                decoding="async"
-                fetchPriority="high"
-                width={640}
-                height={640}
-                className="relative h-full w-full object-contain p-8 drop-shadow-[0_30px_50px_rgba(37,99,235,0.4)]"
-              />
+              <ZoomImage src={product.image} alt={product.name} />
             </GlassPanel>
             <div className="mt-4 grid grid-cols-4 gap-3">
               {[0, 1, 2, 3].map((i) => (
@@ -317,6 +313,34 @@ function ProductPage() {
       <StickyBuyBar product={product} />
       <Footer />
     </main>
+  );
+}
+
+/** Cursor-tracking hover zoom for the main product image (desktop). */
+function ZoomImage({ src, alt }: { src: string; alt: string }) {
+  const [origin, setOrigin] = useState<string | null>(null);
+  return (
+    <div
+      className="relative h-full w-full"
+      onMouseMove={(e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        const x = ((e.clientX - r.left) / r.width) * 100;
+        const y = ((e.clientY - r.top) / r.height) * 100;
+        setOrigin(`${x}% ${y}%`);
+      }}
+      onMouseLeave={() => setOrigin(null)}
+    >
+      <img
+        src={src}
+        alt={alt}
+        decoding="async"
+        fetchPriority="high"
+        width={640}
+        height={640}
+        style={origin ? { transformOrigin: origin, transform: "scale(1.8)" } : undefined}
+        className="relative h-full w-full object-contain p-8 drop-shadow-[0_30px_50px_rgba(37,99,235,0.4)] transition-transform duration-200 will-change-transform"
+      />
+    </div>
   );
 }
 

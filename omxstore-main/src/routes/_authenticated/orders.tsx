@@ -1,17 +1,21 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   CheckCircle2,
   Clock,
   MessageCircle,
   Package,
+  RotateCcw,
   ShoppingBag,
   Truck,
   XCircle,
 } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useCart } from "@/lib/cart";
 import { formatPrice } from "@/lib/products";
+import { fetchProducts } from "@/lib/catalog";
 import { whatsappUrl } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
 import { Container } from "@/components/site/Container";
@@ -28,7 +32,13 @@ export const Route = createFileRoute("/_authenticated/orders")({
   component: OrdersPage,
 });
 
-type OrderItem = { order_id: string; product_name: string; qty: number; line_total: number };
+type OrderItem = {
+  order_id: string;
+  product_id: string;
+  product_name: string;
+  qty: number;
+  line_total: number;
+};
 type Order = {
   id: string;
   created_at: string;
@@ -112,6 +122,43 @@ function OrderTracker({ status }: { status: string }) {
 
 function OrdersPage() {
   const { user } = useAuth();
+  const { add } = useCart();
+  const navigate = useNavigate();
+
+  const { data: catalog } = useQuery({
+    queryKey: ["catalog-reorder"],
+    queryFn: fetchProducts,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const reorder = (order: Order) => {
+    if (!catalog) {
+      toast.error("جاري تحميل الكتالوج — حاول بعد لحظة");
+      return;
+    }
+    const bySlug = new Map(catalog.map((p) => [p.id, p]));
+    let added = 0;
+    let missing = 0;
+    for (const it of order.items) {
+      const p = bySlug.get(it.product_id);
+      if (p) {
+        add(p, it.qty);
+        added += 1;
+      } else {
+        missing += 1;
+      }
+    }
+    if (added > 0) {
+      toast.success(
+        missing > 0
+          ? `أُضيف ${added} منتجاً للسلة (${missing} لم يعد متوفراً)`
+          : `أُضيف ${added} منتجاً للسلة`,
+      );
+      navigate({ to: "/cart" });
+    } else {
+      toast.error("منتجات هذا الطلب لم تعد متوفرة");
+    }
+  };
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["my-orders", user?.id],
@@ -130,7 +177,7 @@ function OrdersPage() {
       if (ids.length) {
         const { data: items, error: itemsErr } = await supabase
           .from("order_items")
-          .select("order_id,product_name,qty,line_total")
+          .select("order_id,product_id,product_name,qty,line_total")
           .in("order_id", ids);
         if (itemsErr) throw itemsErr;
         for (const it of (items ?? []) as unknown as OrderItem[]) {
@@ -217,16 +264,27 @@ function OrdersPage() {
                   </div>
                 </div>
 
-                <Button asChild variant="success" size="pill" className="w-full">
-                  <a
-                    href={whatsappUrl(`السلام عليكم، أريد الاستفسار عن طلبي رقم: ${o.id}`)}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant="gradient"
+                    size="pill"
+                    onClick={() => reorder(o)}
                   >
-                    <MessageCircle className="h-4 w-4" />
-                    استفسار عبر واتساب
-                  </a>
-                </Button>
+                    <RotateCcw className="h-4 w-4" />
+                    أعد الطلب
+                  </Button>
+                  <Button asChild variant="success" size="pill">
+                    <a
+                      href={whatsappUrl(`السلام عليكم، أريد الاستفسار عن طلبي رقم: ${o.id}`)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      واتساب
+                    </a>
+                  </Button>
+                </div>
               </GlassPanel>
             ))}
           </div>

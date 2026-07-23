@@ -15,6 +15,9 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
   const { has, toggle } = useWishlist();
   const quickView = useQuickView();
   const fav = has(product.id);
+  const isNew =
+    !!product.createdAt &&
+    Date.now() - new Date(product.createdAt).getTime() < 14 * 24 * 60 * 60 * 1000;
   const discount =
     product.oldPrice && product.oldPrice > product.price
       ? Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)
@@ -34,11 +37,18 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
           params={{ id: product.id }}
           className="block relative aspect-square bg-gradient-to-br from-surface-2 to-surface p-4"
         >
-          {discount > 0 && (
-            <span className="absolute top-3 right-3 z-10 gradient-sale text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-glow-sm">
-              -{discount}%
-            </span>
-          )}
+          <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-1.5">
+            {discount > 0 && (
+              <span className="gradient-sale text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-glow-sm">
+                -{discount}%
+              </span>
+            )}
+            {isNew && (
+              <span className="gradient-primary text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-glow-sm">
+                جديد
+              </span>
+            )}
+          </div>
           <button
             aria-label={fav ? "إزالة من المفضلة" : "أضف للمفضلة"}
             aria-pressed={fav}

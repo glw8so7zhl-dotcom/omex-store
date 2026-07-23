@@ -14,6 +14,7 @@ import { WishlistProvider } from "@/lib/wishlist";
 import { AuthProvider } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { QuickViewProvider } from "@/components/site/QuickViewProvider";
+import { BackToTop } from "@/components/site/BackToTop";
 import { Header } from "@/components/site/Header";
 import { BottomNav } from "@/components/site/BottomNav";
 import { WhatsAppFab } from "@/components/site/WhatsAppFab";
@@ -179,6 +180,7 @@ function RootComponent() {
                 </PageTransition>
                 <BottomNav />
                 <WhatsAppFab />
+                <BackToTop />
               </div>
               <Toaster position="top-center" richColors />
             </QuickViewProvider>

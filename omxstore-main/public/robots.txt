@@ -7,3 +7,5 @@ Disallow: /account
 Disallow: /orders
 Disallow: /checkout
 Disallow: /search
+
+Sitemap: https://omex-store.vercel.app/sitemap.xml

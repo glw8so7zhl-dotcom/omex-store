@@ -1,9 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, MessageCircle, ShoppingBag, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { useServerFn } from "@tanstack/react-start";
 import { useCart } from "@/lib/cart";
 import { formatPrice } from "@/lib/products";
+import { fetchProducts } from "@/lib/catalog";
+import { validateCoupon } from "@/features/checkout/coupons.functions";
 import { whatsappUrl } from "@/lib/whatsapp";
 import { Footer } from "@/components/site/Footer";
 import { QtyStepper } from "@/components/site/QtyStepper";
@@ -12,10 +15,13 @@ import { Container } from "@/components/site/Container";
 import { PageHeader } from "@/components/site/PageHeader";
 import { GlassPanel } from "@/components/site/GlassPanel";
 import { EmptyState } from "@/components/site/EmptyState";
+import { ProductCard } from "@/components/site/ProductCard";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/cart")({
+  loader: async () => ({ catalog: await fetchProducts() }),
   head: () => ({
     meta: [
       { title: "سلة التسوق — OMEX Store" },
@@ -26,19 +32,44 @@ export const Route = createFileRoute("/cart")({
 });
 
 function CartPage() {
+  const { catalog } = Route.useLoaderData();
   const { items, total, count, setQty, remove, clear } = useCart();
   const navigate = useNavigate();
   const [coupon, setCoupon] = useState("");
   const [discount, setDiscount] = useState(0);
+  const [couponBusy, setCouponBusy] = useState(false);
+  const validateCouponFn = useServerFn(validateCoupon);
   const shipping = total > 0 ? 3000 : 0;
   const grand = Math.max(0, total - discount + shipping);
 
-  const applyCoupon = () => {
-    if (coupon.trim().toUpperCase() === "OMEX10") {
-      setDiscount(Math.round(total * 0.1));
-      toast.success("تم تطبيق الكوبون: خصم 10%");
-    } else {
-      toast.error("كود الكوبون غير صحيح");
+  // Cross-sell: best sellers from the same categories, not already in the cart.
+  const suggestions = useMemo(() => {
+    if (items.length === 0) return [];
+    const inCart = new Set(items.map((i) => i.product.id));
+    const cats = new Set(items.map((i) => i.product.category));
+    return catalog
+      .filter((p) => !inCart.has(p.id) && cats.has(p.category))
+      .sort((a, b) => b.sales - a.sales)
+      .slice(0, 4);
+  }, [catalog, items]);
+
+  const applyCoupon = async () => {
+    const code = coupon.trim();
+    if (!code) return;
+    setCouponBusy(true);
+    try {
+      const res = await validateCouponFn({ data: { code, subtotal: total } });
+      if (res.valid) {
+        setDiscount(Math.min(res.discount, total));
+        toast.success(res.message);
+      } else {
+        setDiscount(0);
+        toast.error(res.message);
+      }
+    } catch {
+      toast.error("تعذّر التحقق من الكوبون.");
+    } finally {
+      setCouponBusy(false);
     }
   };
 
@@ -173,8 +204,14 @@ function CartPage() {
                     aria-label="كود الخصم"
                     className="flex-1 h-11 rounded-2xl bg-surface/70 border border-white/10 px-3 text-sm placeholder:text-muted-foreground focus:border-primary/50 outline-none"
                   />
-                  <Button type="button" onClick={applyCoupon} variant="gradient" size="pill">
-                    تطبيق
+                  <Button
+                    type="button"
+                    onClick={applyCoupon}
+                    variant="gradient"
+                    size="pill"
+                    disabled={couponBusy}
+                  >
+                    {couponBusy ? <Spinner size="sm" className="text-white" /> : "تطبيق"}
                   </Button>
                 </div>
 
@@ -216,6 +253,18 @@ function CartPage() {
               </GlassPanel>
             </aside>
           </div>
+        )}
+
+        {suggestions.length > 0 && (
+          <section className="mt-14">
+            <h2 className="font-display text-xl sm:text-2xl font-black">قد يعجبك أيضاً</h2>
+            <p className="text-xs text-muted-foreground mt-1">مقترحات من نفس أقسام سلتك</p>
+            <div className="mt-5 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {suggestions.map((p, i) => (
+                <ProductCard key={p.id} product={p} index={i} />
+              ))}
+            </div>
+          </section>
         )}
       </Container>
       <Footer />

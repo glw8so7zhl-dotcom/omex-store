@@ -10,6 +10,8 @@ export type Product = {
   id: string;
   /** Database UUID (present on catalog-loaded products; used by reviews). */
   dbId?: string;
+  /** ISO timestamp (catalog-loaded products; powers the "جديد" badge). */
+  createdAt?: string;
   name: string;
   brand: string;
   category: string;

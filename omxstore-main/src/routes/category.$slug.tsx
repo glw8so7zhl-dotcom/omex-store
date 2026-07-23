@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Inbox } from "lucide-react";
 import type { Product } from "@/lib/products";
 import { fetchProducts, fetchCategories } from "@/lib/catalog";
+import { SITE_URL } from "@/lib/site";
 import { Container } from "@/components/site/Container";
 import { PageHeader } from "@/components/site/PageHeader";
 import { EmptyState } from "@/components/site/EmptyState";
@@ -36,6 +37,9 @@ export const Route = createFileRoute("/category/$slug")({
           },
         ]
       : [{ title: "القسم غير موجود" }],
+    links: loaderData
+      ? [{ rel: "canonical", href: `${SITE_URL}/category/${loaderData.category.id}` }]
+      : [],
   }),
   component: CategoryPage,
   notFoundComponent: () => (

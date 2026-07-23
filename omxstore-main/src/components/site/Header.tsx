@@ -1,24 +1,16 @@
-import { Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { Bell, Flame, Heart, LogIn, Search, ShoppingBag, User } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Bell, Flame, Heart, LogIn, ShoppingBag, User } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { useCart } from "@/lib/cart";
 import { useWishlist } from "@/lib/wishlist";
 import { useAuth } from "@/hooks/use-auth";
+import { SearchSuggest } from "@/components/site/SearchSuggest";
 
 export function Header() {
   const { count } = useCart();
   const { count: wishCount } = useWishlist();
   const { session } = useAuth();
   const reduce = useReducedMotion();
-  const navigate = useNavigate();
-  const [q, setQ] = useState("");
-
-  const submitSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const query = q.trim();
-    if (query) navigate({ to: "/search", search: { q: query } });
-  };
 
   return (
     <header className="sticky top-0 z-40 w-full">
@@ -35,23 +27,7 @@ export function Header() {
             </div>
           </Link>
 
-          <form role="search" onSubmit={submitSearch} className="flex-1 relative">
-            <label htmlFor="site-search" className="sr-only">
-              ابحث عن المنتجات
-            </label>
-            <Search className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              id="site-search"
-              name="q"
-              type="search"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="ابحث عن أي منتج..."
-              aria-label="ابحث عن المنتجات"
-              autoComplete="off"
-              className="h-11 w-full rounded-2xl bg-surface/70 border border-white/10 pr-10 pl-4 text-sm placeholder:text-muted-foreground outline-none transition-[color,border-color,box-shadow] hover:border-white/20 focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-            />
-          </form>
+          <SearchSuggest className="flex-1" />
 
           <div className="flex items-center gap-1 md:gap-2 shrink-0">
             <Link

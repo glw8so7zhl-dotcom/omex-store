@@ -14,6 +14,7 @@ import { Footer } from "@/components/site/Footer";
 import { GlassPanel } from "@/components/site/GlassPanel";
 import { HeroCanvas } from "@/components/three/HeroCanvas";
 import { whatsappUrl } from "@/lib/whatsapp";
+import { SITE_URL } from "@/lib/site";
 import { prefersReducedMotion } from "@/lib/motion";
 
 export const Route = createFileRoute("/")({
@@ -25,6 +26,9 @@ export const Route = createFileRoute("/")({
     ]);
     return { products, categories, testimonials };
   },
+  head: () => ({
+    links: [{ rel: "canonical", href: `${SITE_URL}/` }],
+  }),
   component: HomePage,
 });
 

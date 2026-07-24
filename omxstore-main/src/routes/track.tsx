@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { Container } from "@/components/site/Container";
 import { PageHeader } from "@/components/site/PageHeader";
 import { GlassPanel } from "@/components/site/GlassPanel";
+import { CancelOrderButton } from "@/components/site/CancelOrderButton";
 import { SummaryRow } from "@/components/site/SummaryRow";
 import { TextField } from "@/components/site/TextField";
 import { Footer } from "@/components/site/Footer";
@@ -226,6 +227,13 @@ function TrackPage() {
                 استفسار عبر واتساب
               </a>
             </Button>
+
+            <CancelOrderButton
+              orderId={result.id}
+              status={result.status}
+              phoneLast4={last4.trim()}
+              onCancelled={() => setResult({ ...result, status: "cancelled" })}
+            />
           </GlassPanel>
         )}
       </Container>

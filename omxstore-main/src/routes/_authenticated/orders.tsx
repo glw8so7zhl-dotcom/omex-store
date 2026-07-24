@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2,
   Clock,
@@ -20,6 +20,7 @@ import { whatsappUrl } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
 import { Container } from "@/components/site/Container";
 import { RateOrderItem } from "@/components/site/RateOrderItem";
+import { CancelOrderButton } from "@/components/site/CancelOrderButton";
 import { PageHeader } from "@/components/site/PageHeader";
 import { GlassPanel } from "@/components/site/GlassPanel";
 import { EmptyState } from "@/components/site/EmptyState";
@@ -125,6 +126,7 @@ function OrdersPage() {
   const { user } = useAuth();
   const { add } = useCart();
   const navigate = useNavigate();
+  const qc = useQueryClient();
 
   const { data: catalog } = useQuery({
     queryKey: ["catalog-reorder"],
@@ -323,6 +325,12 @@ function OrdersPage() {
                     </a>
                   </Button>
                 </div>
+
+                <CancelOrderButton
+                  orderId={o.id}
+                  status={o.status}
+                  onCancelled={() => qc.invalidateQueries({ queryKey: ["my-orders", user?.id] })}
+                />
               </GlassPanel>
             ))}
           </div>

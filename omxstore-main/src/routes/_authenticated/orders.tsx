@@ -19,6 +19,7 @@ import { fetchProducts } from "@/lib/catalog";
 import { whatsappUrl } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
 import { Container } from "@/components/site/Container";
+import { RateOrderItem } from "@/components/site/RateOrderItem";
 import { PageHeader } from "@/components/site/PageHeader";
 import { GlassPanel } from "@/components/site/GlassPanel";
 import { EmptyState } from "@/components/site/EmptyState";
@@ -131,6 +132,30 @@ function OrdersPage() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const catalogBySlug = new Map((catalog ?? []).map((p) => [p.id, p]));
+
+  // My submitted reviews (RLS: own rows) → per-product rating + approval.
+  const { data: myReviews } = useQuery({
+    queryKey: ["my-reviews", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data: rows, error } = await supabase
+        .from("reviews")
+        .select("product_id,rating,is_approved")
+        .eq("user_id", user!.id);
+      if (error) throw error;
+      const map = new Map<string, { rating: number; approved: boolean }>();
+      for (const r of (rows ?? []) as unknown as Array<{
+        product_id: string;
+        rating: number;
+        is_approved: boolean;
+      }>) {
+        map.set(r.product_id, { rating: r.rating, approved: r.is_approved });
+      }
+      return map;
+    },
+  });
+
   const reorder = (order: Order) => {
     if (!catalog) {
       toast.error("جاري تحميل الكتالوج — حاول بعد لحظة");
@@ -239,14 +264,27 @@ function OrdersPage() {
                 <OrderTracker status={o.status} />
 
                 <ul className="space-y-1.5 border-t border-white/10 pt-3">
-                  {o.items.map((it, idx) => (
-                    <li key={idx} className="flex items-center justify-between gap-2 text-xs">
-                      <span className="truncate text-muted-foreground">
-                        {it.product_name} × {it.qty}
-                      </span>
-                      <span className="font-semibold shrink-0">{formatPrice(it.line_total)}</span>
-                    </li>
-                  ))}
+                  {o.items.map((it, idx) => {
+                    const prod = catalogBySlug.get(it.product_id);
+                    const canRate = o.status === "delivered" && !!prod?.dbId && !!user;
+                    return (
+                      <li key={idx} className="space-y-1.5 text-xs">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate text-muted-foreground">
+                            {it.product_name} × {it.qty}
+                          </span>
+                          <span className="font-semibold shrink-0">{formatPrice(it.line_total)}</span>
+                        </div>
+                        {canRate && (
+                          <RateOrderItem
+                            productDbId={prod!.dbId as string}
+                            userId={user!.id}
+                            existing={myReviews?.get(prod!.dbId as string)}
+                          />
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
 
                 <div className="space-y-2 text-sm border-t border-white/10 pt-3">

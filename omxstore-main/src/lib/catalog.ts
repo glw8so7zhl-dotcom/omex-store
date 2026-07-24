@@ -18,7 +18,7 @@ import type { Product, Category } from "@/lib/products";
  */
 
 const PRODUCT_COLUMNS =
-  "id,slug,name,brand,description,features,image,price,old_price,rating,reviews_count,sales_count,stock,featured,flash_sale,flash_ends_at,category_id,created_at";
+  "id,slug,name,brand,description,features,image,gallery,price,old_price,rating,reviews_count,sales_count,stock,featured,flash_sale,flash_ends_at,category_id,created_at";
 
 type ProductRow = {
   id: string;
@@ -38,6 +38,7 @@ type ProductRow = {
   featured: boolean | null;
   flash_sale: boolean | null;
   flash_ends_at: string | null;
+  gallery: unknown;
   category_id: string | null;
 };
 
@@ -81,6 +82,11 @@ function mapProduct(row: ProductRow, categorySlugById: Map<string, string>): Pro
     brand: row.brand ?? "",
     category: row.category_id ? (categorySlugById.get(row.category_id) ?? "") : "",
     image: toDisplayImage(row.image),
+    galleryImages: Array.isArray(row.gallery)
+      ? (row.gallery as unknown[])
+          .filter((g): g is string => typeof g === "string" && g.length > 0)
+          .map((g) => toDisplayImage(g))
+      : [],
     price: Number(row.price ?? 0),
     oldPrice: row.old_price != null ? Number(row.old_price) : undefined,
     rating: Number(row.rating ?? 0),

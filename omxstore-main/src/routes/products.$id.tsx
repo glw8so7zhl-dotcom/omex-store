@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   Heart,
@@ -78,8 +78,16 @@ function ProductPage() {
   const fav = has(product.id);
   const [qty, setQty] = useState(1);
 
+  // Real gallery: main image + admin-uploaded gallery images (deduped).
+  const images = useMemo(() => {
+    const list = [product.image, ...(product.galleryImages ?? [])];
+    return Array.from(new Set(list.filter(Boolean)));
+  }, [product]);
+  const [activeImg, setActiveImg] = useState(0);
+
   useEffect(() => {
     recordRecentlyViewed(product.id);
+    setActiveImg(0);
   }, [product.id]);
 
   const discount =
@@ -92,7 +100,7 @@ function ProductPage() {
     "@context": "https://schema.org",
     "@type": "Product",
     name: product.name,
-    image: product.image,
+    image: images,
     description: product.description,
     sku: product.id,
     brand: { "@type": "Brand", name: product.brand },
@@ -147,30 +155,35 @@ function ProductPage() {
                 </Badge>
               )}
               <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-fuchsia-500/10" />
-              <ZoomImage src={product.image} alt={product.name} />
+              <ZoomImage src={images[activeImg] ?? product.image} alt={product.name} />
             </GlassPanel>
-            <div className="mt-4 grid grid-cols-4 gap-3">
-              {[0, 1, 2, 3].map((i) => (
-                <button
-                  key={i}
-                  aria-label={`صورة مصغّرة ${i + 1}`}
-                  className={`aspect-square rounded-2xl glass grid place-items-center p-2 hover:border-primary/50 transition ${
-                    i === 0 ? "border-primary/60 ring-2 ring-primary/20" : ""
-                  }`}
-                >
-                  <img
-                    src={product.image}
-                    alt=""
-                    aria-hidden="true"
-                    loading="lazy"
-                    decoding="async"
-                    width={160}
-                    height={160}
-                    className="max-h-full max-w-full object-contain"
-                  />
-                </button>
-              ))}
-            </div>
+            {images.length > 1 && (
+              <div className="mt-4 grid grid-cols-4 gap-3">
+                {images.slice(0, 8).map((src, i) => (
+                  <button
+                    key={src}
+                    type="button"
+                    aria-label={`صورة ${i + 1} من ${images.length}`}
+                    aria-pressed={i === activeImg}
+                    onClick={() => setActiveImg(i)}
+                    className={`aspect-square rounded-2xl glass grid place-items-center p-2 hover:border-primary/50 transition ${
+                      i === activeImg ? "border-primary/60 ring-2 ring-primary/20" : ""
+                    }`}
+                  >
+                    <img
+                      src={src}
+                      alt=""
+                      aria-hidden="true"
+                      loading="lazy"
+                      decoding="async"
+                      width={160}
+                      height={160}
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </motion.div>
 
           {/* Info */}

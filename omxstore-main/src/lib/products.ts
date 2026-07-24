@@ -16,6 +16,8 @@ export type Product = {
   brand: string;
   category: string;
   image: string;
+  /** Additional gallery images (admin-managed); main image is separate. */
+  galleryImages?: string[];
   price: number;
   oldPrice?: number;
   rating: number;

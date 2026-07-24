@@ -70,6 +70,9 @@ export async function submitQuestion(
     .insert({ product_id: productDbId, user_id: userId, question: clean } as never);
   if (error) {
     console.error("[questions] submit failed:", error);
+    if (String(error.message ?? "").includes("too_many_pending_questions")) {
+      return { ok: false, message: "لديك 5 أسئلة بانتظار الإجابة — سنرد عليها أولاً 😊" };
+    }
     return { ok: false, message: "تعذّر إرسال السؤال. حاول مجدداً." };
   }
   return { ok: true, message: "استلمنا سؤالك — سنُنبّهك فور الإجابة 🔔" };

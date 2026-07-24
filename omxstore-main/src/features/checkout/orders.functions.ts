@@ -75,6 +75,15 @@ export const createOrder = createServerFn({ method: "POST" })
       if (msg.includes("unknown_product")) {
         throw new Error("أحد المنتجات لم يعد متوفراً. حدّث السلة وحاول مجدداً.");
       }
+      if (msg.includes("insufficient_stock")) {
+        throw new Error("الكمية المطلوبة لم تعد متوفرة لأحد المنتجات — خفّض الكمية أو حدّث السلة.");
+      }
+      if (msg.includes("rate_limited")) {
+        throw new Error("محاولات طلب كثيرة خلال ساعة — انتظر قليلاً ثم حاول مجدداً.");
+      }
+      if (msg.includes("insufficient_points")) {
+        throw new Error("رصيد نقاطك غير كافٍ — حدّث الصفحة وحاول مجدداً.");
+      }
       throw new Error("تعذّر إنشاء الطلب. حاول مرة أخرى.");
     }
 

@@ -1,0 +1,15 @@
+*** Begin Patch
+*** Update File: omxstore-main/src/routes/__root.tsx
+@@
+-                <BottomNav />
+-                <WhatsAppFab />
++                <BottomNav />
++                <WhatsAppFab />
++                {/* ChatGPT Chat Widget (added by add/chatgpt-integration) */}
++                {/* Import is dynamic to avoid a top-level import that might affect bundle size */}
++                {typeof window !== "undefined" ? (
++                  // eslint-disable-next-line @typescript-eslint/no-var-requires
++                  require("@/components/site/ChatWidget").default() : null
++                ) : null}
+                 <PwaInstall />
+*** End Patch
